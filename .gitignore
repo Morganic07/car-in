@@ -1,0 +1,45 @@
+# Dépendances et build
+node_modules/
+.next/
+out/
+dist/
+
+# Base de données locale
+*.db
+*.db-journal
+prisma/dev.db
+prisma/dev.db-journal
+
+# Environnement
+.env
+.env.local
+.env.*.local
+
+# Outillage local, jamais versionné
+CLAUDE.md
+CLAUDE.local.md
+.claude/
+.mcp.json
+CLAUDE-SECURITY-*
+review-pr.md
+ui-ux.md
+security.md
+
+# Rapports de test et de couverture
+coverage/
+htmlcov/
+coverage.json
+.coverage
+.nyc_output/
+.pytest_cache/
+.mypy_cache/
+__pycache__/
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+
+# Système et éditeurs
+.DS_Store
+*.log
+*.tsbuildinfo
