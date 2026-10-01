@@ -4,11 +4,15 @@ node_modules/
 out/
 dist/
 
-# Base de données locale
+# Base de données locale — avec prisma.config.ts, le chemin de `file:./dev.db`
+# est relatif à la racine du projet, pas au dossier prisma/.
 *.db
 *.db-journal
-prisma/dev.db
-prisma/dev.db-journal
+*.db-shm
+*.db-wal
+
+# Client Prisma, régénéré par `npm run db:generate` (et par postinstall)
+prisma/generated/
 
 # Environnement
 .env
