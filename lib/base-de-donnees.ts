@@ -1,7 +1,7 @@
 /// Règle unique de résolution de l'adresse de la base.
 ///
-/// Elle vit ici parce que quatre appelants en dépendent — les migrations, la
-/// configuration de Prisma, la semence et le client de l'application — et qu'une
+/// Elle vit ici parce que trois appelants en dépendent — la configuration de Prisma
+/// (donc les migrations), la semence, et le client de l'application — et qu'une
 /// divergence entre eux produit exactement le défaut constaté pendant la story 1.2 :
 /// `db:migrate` fonctionnait sur un dépôt fraîchement cloné, `seed` échouait.
 ///
