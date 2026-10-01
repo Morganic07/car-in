@@ -1,0 +1,92 @@
+// Modèle de données de Car'in. Décisions et justifications : PLAN.md.
+//
+// Deux limites de SQLite à connaître avant de s'y fier :
+//   - un `enum` Prisma est stocké en TEXT sans contrainte CHECK. La base n'empêche
+//     donc pas une valeur hors liste : c'est le client Prisma et le typage qui la
+//     refusent. Le garde-fou réel des transitions est l'écriture conditionnée
+//     décrite dans PLAN.md §4.
+//   - l'invariant « une course DEMANDEE n'a jamais de chauffeur » n'est pas
+//     exprimable ici. Il est tenu par les transitions, pas par le schéma.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../prisma/generated/client"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Role {
+  CLIENT
+  CHAUFFEUR
+}
+
+enum EtatCourse {
+  DEMANDEE
+  ACCEPTEE
+  EN_COURSE
+  TERMINEE
+  ANNULEE
+}
+
+/// `User` et non `Utilisateur` : la brique d'authentification de l'epic 2 attend ce
+/// nom de modèle, ainsi que `Session`, `Account` et `Verification` qu'elle ajoutera.
+/// Le vocabulaire métier reste en français partout ailleurs.
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  nom       String
+  telephone String
+  role      Role     @default(CLIENT)
+  createdAt DateTime @default(now())
+
+  coursesCommandees Course[] @relation("CourseClient")
+  coursesConduites  Course[] @relation("CourseChauffeur")
+}
+
+model Course {
+  id String @id @default(cuid())
+
+  clientId String
+  client   User   @relation("CourseClient", fields: [clientId], references: [id])
+
+  /// Nul tant qu'aucun chauffeur n'a accepté, et remis à nul par un désengagement.
+  chauffeurId String?
+  chauffeur   User?   @relation("CourseChauffeur", fields: [chauffeurId], references: [id])
+
+  /// Les coordonnées sont obligatoires : une course sans elles est une adresse
+  /// qu'aucune carte ne sait situer (scénario S10).
+  departLabel  String
+  departLat    Float
+  departLon    Float
+  arriveeLabel String
+  arriveeLat   Float
+  arriveeLon   Float
+
+  /// Date et heure souhaitées par le client. Le MVP ne gère que le planifié.
+  departAt DateTime
+
+  passagers   Int     @default(1)
+  bagages     Int     @default(0)
+  siegeEnfant Boolean @default(false)
+  commentaire String?
+
+  etat EtatCourse @default(DEMANDEE)
+
+  /// Nuls quand l'estimation a échoué : le prix s'affiche alors « confirmé par la
+  /// compagnie », et aucun calcul de repli ne vient les remplir (scénario S11).
+  distanceM       Int?
+  dureeS          Int?
+  prixEstimeCents Int?
+
+  createdAt  DateTime  @default(now())
+  accepteeAt DateTime?
+  demarreeAt DateTime?
+  termineeAt DateTime?
+  annuleeAt  DateTime?
+
+  @@index([etat, departAt])
+  @@index([clientId])
+  @@index([chauffeurId])
+}
