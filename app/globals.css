@@ -1,1 +1,91 @@
-@import 'tailwindcss';
+/* `source(none)` coupe la détection automatique, qui scanne tout le dépôt — y
+   compris les tests et la documentation. Une classe seulement *citée* dans un
+   commentaire produisait alors une vraie utilitaire dans la feuille servie. Les
+   sources sont donc énumérées : seuls les fichiers qui rendent du balisage comptent.
+   Un nouveau dossier de composants devra être ajouté ici, sinon ses styles
+   manqueront — l'oubli se voit tout de suite à l'écran. */
+@import 'tailwindcss' source(none);
+@source '../app';
+@source '../components';
+
+/* Jetons du design system de Car'in — source de vérité unique des couleurs.
+   Aucune valeur hexadécimale ne doit apparaître ailleurs : un test le vérifie.
+   Les contrastes sont mesurés par tests/design-system.test.tsx, pas estimés à l'œil. */
+@theme {
+  --color-primary: #0f172a;
+  --color-on-primary: #ffffff;
+  --color-secondary: #334155;
+  --color-accent: #0369a1;
+  --color-background: #f8fafc;
+  --color-foreground: #020617;
+  --color-muted: #e8ecf1;
+  --color-border: #e2e8f0;
+  --color-destructive: #dc2626;
+
+  /* Survol des boutons pleins : on assombrit vers le primaire, jamais on n'éclaircit.
+     Une opacité à 90 % sur le fond de page faisait tomber le bouton destructif à
+     4.35:1 sous son texte blanc. Dérivés des jetons ci-dessus, donc sans valeur
+     propre, et mesurés comme les autres par le test de contraste. */
+  --color-accent-survol: color-mix(in srgb, var(--color-accent) 85%, var(--color-primary));
+  --color-destructive-survol: color-mix(
+    in srgb,
+    var(--color-destructive) 85%,
+    var(--color-primary)
+  );
+
+  /* Les cinq états d'une course : un fond et son texte, toujours employés ensemble. */
+  --color-etat-demandee: #fef3c7;
+  --color-etat-demandee-texte: #92400e;
+  --color-etat-acceptee: #dbeafe;
+  --color-etat-acceptee-texte: #1e40af;
+  --color-etat-en-course: #e0e7ff;
+  --color-etat-en-course-texte: #3730a3;
+  --color-etat-terminee: #dcfce7;
+  --color-etat-terminee-texte: #166534;
+  --color-etat-annulee: #f1f5f9;
+  --color-etat-annulee-texte: #475569;
+
+  /* Les deux fontes. Les variables --font-titres et --font-corps sont posées sur
+     <html> par next/font dans app/layout.tsx. */
+  --font-sans: var(--font-corps), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-titres), ui-sans-serif, system-ui, sans-serif;
+
+  /* Hauteur minimale d'une cible tactile : 2.75rem × 16 px = 44 px. Portée par
+     --spacing-cible, qui produit l'utilitaire `min-h-cible`, plutôt que recopiée en
+     `min-h-[44px]` dans chaque composant. */
+  --spacing-cible: 2.75rem;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    /* 16 px minimum et interligne 1.5 : l'interface se lit debout, dehors. */
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+  }
+
+  /* Le focus clavier reste visible partout : jamais d'`outline: none` sans
+     remplacement, et un décalage pour qu'il ne colle pas au bord du composant. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

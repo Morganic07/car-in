@@ -116,6 +116,14 @@ function libelleRole(role: Role): string {
   return role === 'CHAUFFEUR' ? 'aux chauffeurs' : 'aux clients'
 }
 
+/// Quand l'état connu est terminal, on dit lequel plutôt que de rendre le `refus` de
+/// l'action : celui d'`accepter` annoncerait « prise par un autre chauffeur » pour une
+/// course que le client a en réalité annulée.
+const MOTIFS_ETAT_TERMINAL: Partial<Record<Etat, string>> = {
+  TERMINEE: 'Cette course est déjà terminée.',
+  ANNULEE: 'Cette course a été annulée.',
+}
+
 /// Ne change rien et n'écrit rien : rend le verdict, et la transition à appliquer
 /// quand il est favorable. Un refus porte toujours un motif lisible par l'utilisateur,
 /// jamais un simple `false`.
@@ -127,7 +135,7 @@ export function appliquerTransition(etat: Etat, action: Action, role: Role): Res
   }
 
   if (!transition.origines.includes(etat)) {
-    return { permis: false, motif: transition.refus }
+    return { permis: false, motif: MOTIFS_ETAT_TERMINAL[etat] ?? transition.refus }
   }
 
   return { permis: true, transition, etatCible: transition.cible }

@@ -208,19 +208,19 @@ objection de relecture restée sans réponse.
 *Branche `epic/socle`. Fichiers : configuration racine, `prisma/`, `lib/domaine/`,
 `app/globals.css`, `components/ui/`.*
 
-- [ ] **1.1 — Squelette du projet et outillage**
+- [x] **1.1 — Squelette du projet et outillage**
   *Critère* : `npm run dev` sert une page d'accueil Car'in sur `localhost:3000`.
   `npm run lint`, `npm run typecheck` et `npm test` s'exécutent et passent au vert sur un
   dépôt fraîchement installé. Les versions de `prisma` et `@prisma/client` sont épinglées
   sur la même version stable (pas une préversion).
 
-- [ ] **1.2 — Modèle de données, migration et jeu de démonstration**
+- [x] **1.2 — Modèle de données, migration et jeu de démonstration**
   *Critère* : la migration crée les tables `User` et `Course`. `npm run seed` insère les
   trois chauffeurs, un client de démonstration et au moins six courses couvrant les cinq
   états, dont une course `DEMANDEE` dont l'heure de départ est passée (pour S9). Relancer
   le seed deux fois de suite ne duplique rien et ne casse rien.
 
-- [ ] **1.3 — Machine à états d'une course**
+- [x] **1.3 — Machine à états d'une course**
   *Critère* : un module sans dépendance à la base expose les transitions autorisées pour un
   état et un rôle donnés. Les tests couvrent chaque transition autorisée du graphe du §4
   **et le refus de chaque transition interdite** : terminer une course `DEMANDEE`, annuler

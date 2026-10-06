@@ -108,6 +108,26 @@ describe('transitions du graphe', () => {
     expect(parChauffeur.permis).toBe(false)
     if (!parChauffeur.permis) expect(parChauffeur.motif).toContain('clients')
   })
+
+  it('dit pourquoi une course terminale est refusée, sans inventer de motif', () => {
+    // Le motif d'`accepter` parle d'un autre chauffeur : faux pour une course annulée
+    // par son client. Un état terminal connu se nomme lui-même.
+    const annulee = appliquerTransition('ANNULEE', 'accepter', 'CHAUFFEUR')
+    expect(annulee.permis).toBe(false)
+    if (!annulee.permis) {
+      expect(annulee.motif).toContain('annulée')
+      expect(annulee.motif).not.toContain('chauffeur')
+    }
+
+    const terminee = appliquerTransition('TERMINEE', 'annuler', 'CLIENT')
+    expect(terminee.permis).toBe(false)
+    if (!terminee.permis) expect(terminee.motif).toContain('terminée')
+
+    // Hors état terminal, le motif propre à l'action reste en vigueur.
+    const prise = appliquerTransition('ACCEPTEE', 'accepter', 'CHAUFFEUR')
+    expect(prise.permis).toBe(false)
+    if (!prise.permis) expect(prise.motif).toBe(TRANSITIONS.accepter.refus)
+  })
 })
 
 describe('transitions possibles pour un état et un rôle', () => {
@@ -150,12 +170,17 @@ describe('données d’écriture portées par chaque transition', () => {
     // L'invariant de PLAN.md §4 : une course DEMANDEE n'a jamais de chauffeur. Sans
     // cette remise à nul, `accepter` — qui exige `chauffeurId IS NULL` — ne pourrait
     // plus jamais s'appliquer à une course libérée.
+    // Sans ce compte, la boucle passerait à vide si plus aucune action ne menait à
+    // DEMANDEE — et le test resterait vert sans rien avoir vérifié.
+    let retours = 0
     for (const action of ACTIONS) {
       const transition = TRANSITIONS[action]
       if (transition.cible !== 'DEMANDEE') continue
       expect(transition.remiseANul, action).toContain('chauffeurId')
       expect(transition.remiseANul, action).toContain('accepteeAt')
+      retours += 1
     }
+    expect(retours).toBeGreaterThan(0)
   })
 
   it('pose un horodatage à chaque transition sauf le désengagement', () => {
@@ -170,7 +195,7 @@ describe('données d’écriture portées par chaque transition', () => {
   })
 
   it('conserve l’historique d’une course annulée en route', () => {
-    // Annuler n'effface ni l'acceptation ni le départ : ils ont eu lieu.
+    // Annuler n'efface ni l'acceptation ni le départ : ils ont eu lieu.
     expect(TRANSITIONS.annuler.remiseANul).toHaveLength(0)
   })
 

@@ -80,25 +80,62 @@ describe('jeu de démonstration', () => {
   })
 
   it('horodate chaque course conformément à son état', async () => {
-    // La story 1.3 bâtira la machine à états sur ces horodatages : un jeu de
+    // La machine à états de la story 1.3 s'appuie sur ces horodatages : un jeu de
     // démonstration incohérent la ferait travailler sur des cas impossibles.
-    const attendus = {
-      DEMANDEE: [],
-      ACCEPTEE: ['accepteeAt'],
-      EN_COURSE: ['accepteeAt', 'demarreeAt'],
-      TERMINEE: ['accepteeAt', 'demarreeAt', 'termineeAt'],
-      ANNULEE: ['annuleeAt'],
+    //
+    // La règle a été corrigée en écrivant cette machine à états. La première version
+    // exigeait qu'une course ANNULEE ne porte *que* `annuleeAt` — ce qui est faux :
+    // le périmètre autorise l'annulation depuis DEMANDEE, ACCEPTEE et EN_COURSE, et
+    // annuler n'efface pas une acceptation ni un départ qui ont eu lieu. Le test
+    // passait seulement parce que la semence n'annule qu'une course DEMANDEE : il
+    // interdisait un état que le domaine permet.
+    //
+    // Rendre ces deux champs facultatifs retirait en revanche une contrainte réelle :
+    // une course annulée pouvait alors porter `demarreeAt` sans `accepteeAt`, que la
+    // machine à états ne sait pas produire. D'où la règle d'antériorité ci-dessous,
+    // appliquée à **tous** les états : elle réduit les profils admis d'une course
+    // ANNULEE à exactement trois — aucun jalon, l'acceptation seule, ou l'acceptation
+    // puis le départ.
+    const regles = {
+      DEMANDEE: { requis: [], interdits: ['accepteeAt', 'demarreeAt', 'termineeAt', 'annuleeAt'] },
+      ACCEPTEE: { requis: ['accepteeAt'], interdits: ['demarreeAt', 'termineeAt', 'annuleeAt'] },
+      EN_COURSE: {
+        requis: ['accepteeAt', 'demarreeAt'],
+        interdits: ['termineeAt', 'annuleeAt'],
+      },
+      TERMINEE: {
+        requis: ['accepteeAt', 'demarreeAt', 'termineeAt'],
+        interdits: ['annuleeAt'],
+      },
+      // `accepteeAt` et `demarreeAt` sont facultatifs : ils dépendent de l'état depuis
+      // lequel le client a annulé. `termineeAt` reste interdit — une course annulée
+      // n'a pas été effectuée.
+      ANNULEE: { requis: ['annuleeAt'], interdits: ['termineeAt'] },
     } as const
 
     for (const course of await client.course.findMany()) {
-      const requis: readonly string[] = attendus[course.etat]
+      const { requis, interdits } = regles[course.etat]
       for (const champ of ['accepteeAt', 'demarreeAt', 'termineeAt', 'annuleeAt'] as const) {
         const message = `${course.id} (${course.etat}) — ${champ}`
-        if (requis.includes(champ)) {
+        if ((requis as readonly string[]).includes(champ)) {
           expect(course[champ], message).not.toBeNull()
-        } else {
+        } else if ((interdits as readonly string[]).includes(champ)) {
           expect(course[champ], message).toBeNull()
         }
+      }
+    }
+  })
+
+  it('ne pose aucun jalon sans celui qui le précède', async () => {
+    // Antériorité : on ne démarre pas une course qu'on n'a pas acceptée, on ne
+    // termine pas une course qu'on n'a pas démarrée. Vrai quel que soit l'état, et
+    // c'est ce qui borne les profils admis d'une course ANNULEE.
+    for (const course of await client.course.findMany()) {
+      if (course.demarreeAt !== null) {
+        expect(course.accepteeAt, `${course.id} — démarrée sans acceptation`).not.toBeNull()
+      }
+      if (course.termineeAt !== null) {
+        expect(course.demarreeAt, `${course.id} — terminée sans départ`).not.toBeNull()
       }
     }
   })
@@ -113,11 +150,23 @@ describe('jeu de démonstration', () => {
           jalons[i - 1]!.getTime(),
         )
       }
-      if (course.etat === 'ANNULEE' && course.annuleeAt) {
-        expect(course.annuleeAt.getTime(), `${course.id} — annulation`).toBeLessThanOrEqual(
-          Date.now(),
-        )
+
+      if (course.annuleeAt === null) continue
+
+      // L'annulation vient après ce qui a déjà eu lieu : sans cette comparaison, une
+      // course annulée avant même d'avoir été acceptée passerait, puisque la chaîne
+      // ci-dessus écarte les valeurs nulles sans jamais regarder `annuleeAt`.
+      const dernierJalon = jalons.at(-1)
+      if (dernierJalon) {
+        expect(
+          course.annuleeAt.getTime(),
+          `${course.id} — annulation antérieure à son dernier jalon`,
+        ).toBeGreaterThanOrEqual(dernierJalon.getTime())
       }
+
+      expect(course.annuleeAt.getTime(), `${course.id} — annulation`).toBeLessThanOrEqual(
+        Date.now(),
+      )
     }
   })
 
