@@ -12,30 +12,45 @@
 /// projet, et non au dossier prisma/.
 const DEFAUT_DEVELOPPEMENT = 'file:./dev.db'
 
-function enProduction(): boolean {
-  return process.env.NODE_ENV === 'production'
+/// Le repli exige un signal **positif** de développement. Tester « pas en
+/// production » ne suffisait pas : la CLI Prisma et la semence tournent sans
+/// NODE_ENV, et un `prisma migrate deploy` lancé sur un serveur sans DATABASE_URL
+/// migrait alors un fichier local en annonçant un succès. `next dev` et Vitest posent
+/// NODE_ENV eux-mêmes ; les commandes lancées à la main lisent `.env`.
+function enDeveloppement(): boolean {
+  return process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test'
+}
+
+/// Une variable déclarée vide est une erreur de configuration, pas une absence : on
+/// ne la remplace jamais par la base locale, même en développement.
+function declareeVide(): boolean {
+  const declaree = process.env.DATABASE_URL
+  return declaree !== undefined && declaree.trim() === ''
 }
 
 /// Pour les appelants qui n'ouvrent pas forcément la base — `prisma generate` en est
 /// un, et il tourne au `postinstall`, y compris sur une installation de production
 /// où DATABASE_URL n'est fournie qu'à l'exécution. Rend `undefined` plutôt que de
-/// deviner : aucune commande ne doit se rabattre en silence sur une base locale en
-/// production.
+/// deviner : aucune commande ne doit se rabattre en silence sur une base locale hors
+/// développement.
 export function urlBaseDeDonneesSiDisponible(): string | undefined {
   const declaree = process.env.DATABASE_URL
-  if (declaree) return declaree
-  return enProduction() ? undefined : DEFAUT_DEVELOPPEMENT
+  if (declaree !== undefined && !declareeVide()) return declaree
+  return declaree === undefined && enDeveloppement() ? DEFAUT_DEVELOPPEMENT : undefined
 }
 
 /// Pour les appelants qui vont réellement se connecter. Échoue plutôt que de
-/// supposer une base.
+/// supposer une base, avec un message qui dit quoi faire.
 export function urlBaseDeDonnees(): string {
   const url = urlBaseDeDonneesSiDisponible()
-  if (!url) {
-    throw new Error(
-      'DATABASE_URL est obligatoire en production : aucune base par défaut ' +
-        "n'est supposée hors développement.",
-    )
+  if (url) return url
+
+  if (declareeVide()) {
+    throw new Error('DATABASE_URL est déclarée mais vide : renseignez l’adresse de la base.')
   }
-  return url
+  throw new Error(
+    'DATABASE_URL est obligatoire hors développement : aucune base par défaut ' +
+      'n’est supposée. En local, copiez .env.example en .env ; sur un serveur, ' +
+      'fournissez la variable à la commande.',
+  )
 }

@@ -15,9 +15,10 @@ if (existsSync('.env')) {
   process.loadEnvFile('.env')
 }
 
-// L'adresse de la base n'est fournie que si elle est connue. En production sans
-// DATABASE_URL, la clé est absente : `prisma generate` — qui tourne au
-// `postinstall` et n'a pas besoin de base — aboutit, tandis qu'une commande de
+// L'adresse de la base n'est fournie que si elle est connue. Hors développement
+// sans DATABASE_URL — NODE_ENV absent compris, cas courant de la CLI —, la clé
+// est absente : `prisma generate` — qui tourne au `postinstall` et n'a pas
+// besoin de base — aboutit, tandis qu'une commande de
 // migration échoue sur l'absence de source de données plutôt que de migrer en
 // silence un fichier SQLite local.
 const url = urlBaseDeDonneesSiDisponible()

@@ -4,7 +4,8 @@ import { join } from 'node:path'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 
-import { LIBELLES_ETAT } from '../components/ui/BadgeEtat.tsx'
+import { BadgeEtat, LIBELLES_ETAT } from '../components/ui/BadgeEtat.tsx'
+import { Bouton, type VarianteBouton } from '../components/ui/Bouton.tsx'
 import { Champ, descriptionsAssociees } from '../components/ui/Champ.tsx'
 import { ETATS } from '../lib/domaine/course.ts'
 
@@ -93,6 +94,15 @@ function fichiersSources(dossier: string): string[] {
 
 const SOURCES_INTERFACE = [...fichiersSources('components'), ...fichiersSources('app')]
 
+/// Classes de la première balise `balise` du rendu, découpées en mots. Lire le rendu
+/// plutôt que la source : une chaîne présente dans un commentaire du composant
+/// satisferait un `toContain` sur le fichier sans jamais atteindre le navigateur.
+function classesRendues(rendu: string, balise: string): string[] {
+  const classe = new RegExp(`<${balise}\\b[^>]*\\bclass="([^"]*)"`).exec(rendu)?.[1]
+  if (classe === undefined) throw new Error(`Aucune balise <${balise}> avec une classe dans : ${rendu}`)
+  return classe.split(/\s+/).filter((mot) => mot !== '')
+}
+
 describe('jetons du design system', () => {
   it('définit les neuf jetons de base', () => {
     for (const nom of [
@@ -121,8 +131,12 @@ describe('jetons du design system', () => {
 
   it('tient la cible tactile à 44 px', () => {
     // 2.75rem × 16 px = 44 px. Le jeton existe pour que les composants écrivent
-    // `min-h-cible` au lieu de recopier la valeur.
-    expect(FEUILLE).toContain('--spacing-cible: 2.75rem')
+    // `min-h-cible` au lieu de recopier la valeur. Il doit vivre dans `@theme` :
+    // déclaré dans un `:root` ordinaire, il existerait comme variable CSS mais
+    // Tailwind ne générerait pas l'utilitaire, et `min-h-cible` ne ferait rien.
+    const theme = /@theme\s*\{([^}]*)\}/.exec(FEUILLE)?.[1]
+    expect(theme, 'bloc @theme introuvable dans app/globals.css').toBeDefined()
+    expect(theme).toMatch(/--spacing-cible:\s*2\.75rem\s*;/)
   })
 
   it('rend le focus clavier visible sans le neutraliser', () => {
@@ -221,10 +235,33 @@ describe('composants d’interface', () => {
   })
 
   it('tiennent la cible tactile sur tout ce qui se touche', () => {
-    for (const nom of ['Bouton', 'Champ']) {
-      const source = readFileSync(join(racine, `components/ui/${nom}.tsx`), 'utf8')
-      expect(source, nom).toContain('min-h-cible')
+    // Vérifié sur le rendu, mot entier : la chaîne figure aussi dans le commentaire
+    // de Bouton.tsx, et une recherche dans la source restait verte une fois la
+    // classe retirée du `className`. Chaque variante est rendue, pour qu'une
+    // variante qui écraserait la hauteur ne passe pas inaperçue.
+    const variantes = [
+      'principal',
+      'secondaire',
+      'destructif',
+    ] as const satisfies readonly VarianteBouton[]
+    for (const variante of variantes) {
+      const rendu = renderToStaticMarkup(<Bouton variante={variante}>Réserver</Bouton>)
+      expect(classesRendues(rendu, 'button'), `Bouton ${variante}`).toContain('min-h-cible')
     }
+
+    const champ = renderToStaticMarkup(<Champ id="nom" libelle="Votre nom" />)
+    expect(classesRendues(champ, 'input'), 'Champ').toContain('min-h-cible')
+  })
+
+  it.each(ETATS)('associe au badge %s le fond et le texte de ce même état', (etat) => {
+    // Le contraste est mesuré par paire d'un même état. Un badge qui mêlerait le
+    // fond d'un état et le texte d'un autre afficherait une paire que rien ne mesure,
+    // et annoncerait par la couleur un état qui n'est pas le sien.
+    const cle = etat.toLowerCase().replace('_', '-')
+    const classes = classesRendues(renderToStaticMarkup(<BadgeEtat etat={etat} />), 'span')
+
+    expect(classes.filter((c) => c.startsWith('bg-etat-'))).toEqual([`bg-etat-${cle}`])
+    expect(classes.filter((c) => c.startsWith('text-etat-'))).toEqual([`text-etat-${cle}-texte`])
   })
 
   it('branche réellement la fusion sur le champ rendu', () => {

@@ -22,9 +22,9 @@ describe('résolution de l’adresse de la base', () => {
     expect(urlBaseDeDonnees()).toBe('file:/prod/base.db')
   })
 
-  it('se replie sur la base de développement hors production', () => {
+  it.each(['development', 'test'])('se replie sur la base locale quand NODE_ENV vaut %s', (env) => {
     vi.stubEnv('DATABASE_URL', undefined)
-    vi.stubEnv('NODE_ENV', 'development')
+    vi.stubEnv('NODE_ENV', env)
     expect(urlBaseDeDonneesSiDisponible()).toBe('file:./dev.db')
     expect(urlBaseDeDonnees()).toBe('file:./dev.db')
   })
@@ -36,6 +36,25 @@ describe('résolution de l’adresse de la base', () => {
     vi.stubEnv('DATABASE_URL', undefined)
     vi.stubEnv('NODE_ENV', 'production')
     expect(urlBaseDeDonneesSiDisponible()).toBeUndefined()
-    expect(() => urlBaseDeDonnees()).toThrow(/obligatoire en production/)
+    expect(() => urlBaseDeDonnees()).toThrow(/obligatoire hors développement/)
+  })
+
+  it('ne devine aucune base quand NODE_ENV n’est pas défini', () => {
+    // Le cas réel de la CLI Prisma et de la semence sur un serveur : ni NODE_ENV,
+    // ni DATABASE_URL. Se replier ici migrerait un fichier local en annonçant un
+    // succès, pendant que la vraie base resterait non migrée.
+    vi.stubEnv('DATABASE_URL', undefined)
+    vi.stubEnv('NODE_ENV', undefined)
+    expect(urlBaseDeDonneesSiDisponible()).toBeUndefined()
+    expect(() => urlBaseDeDonnees()).toThrow(/obligatoire hors développement/)
+  })
+
+  it('refuse une adresse déclarée vide, même en développement', () => {
+    for (const vide of ['', '   ']) {
+      vi.stubEnv('DATABASE_URL', vide)
+      vi.stubEnv('NODE_ENV', 'development')
+      expect(urlBaseDeDonneesSiDisponible(), JSON.stringify(vide)).toBeUndefined()
+      expect(() => urlBaseDeDonnees(), JSON.stringify(vide)).toThrow(/déclarée mais vide/)
+    }
   })
 })

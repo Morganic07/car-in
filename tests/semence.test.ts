@@ -194,3 +194,50 @@ describe('jeu de démonstration', () => {
     expect(course.etat).toBe('ACCEPTEE')
   })
 })
+
+describe('commande `npm run seed`', () => {
+  // Le critère de la story 1.2 porte sur la commande, pas sur la fonction : les tests
+  // ci-dessus n'exécutent ni le script npm (`--env-file-if-exists`) ni le bloc
+  // `import.meta.main`. Une base neuve, à elle seule : si la commande écrivait
+  // ailleurs — dans la base de `.env`, par exemple —, celle-ci resterait vide.
+  let dossierCommande: string
+  let fichierCommande: string
+
+  beforeAll(() => {
+    dossierCommande = mkdtempSync(join(tmpdir(), 'carin-seed-cli-'))
+    fichierCommande = join(dossierCommande, 'cli.db')
+    execFileSync(join(process.cwd(), 'node_modules/.bin/prisma'), ['migrate', 'deploy'], {
+      env: { ...process.env, DATABASE_URL: `file:${fichierCommande}` },
+      stdio: 'pipe',
+    })
+  }, 120_000)
+
+  afterAll(() => {
+    rmSync(dossierCommande, { recursive: true, force: true })
+  })
+
+  it('remplit la base désignée, et relancée ne duplique rien', async () => {
+    const lancer = () =>
+      execFileSync('npm', ['run', '--silent', 'seed'], {
+        env: { ...process.env, DATABASE_URL: `file:${fichierCommande}` },
+        encoding: 'utf8',
+        stdio: 'pipe',
+      })
+
+    const verif = creerClientPrisma(`file:${fichierCommande}`)
+    try {
+      expect(lancer()).toContain('Semence appliquée')
+      const comptes = await verif.user.count()
+      const courses = await verif.course.count()
+      expect(await verif.user.count({ where: { role: 'CHAUFFEUR' } })).toBe(3)
+      expect(await verif.user.count({ where: { role: 'CLIENT' } })).toBe(1)
+      expect(courses).toBeGreaterThanOrEqual(6)
+
+      expect(lancer()).toContain('Semence appliquée')
+      expect(await verif.user.count()).toBe(comptes)
+      expect(await verif.course.count()).toBe(courses)
+    } finally {
+      await verif.$disconnect()
+    }
+  }, 120_000)
+})
