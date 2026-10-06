@@ -247,6 +247,16 @@ describe('composants d’interface', () => {
     expect(rendu).toContain('border-destructive')
   })
 
+  it('donne au texte indicatif une couleur mesurée, pas celle du preflight', () => {
+    // Sans classe explicite, Tailwind affiche le texte indicatif à 50 % de la couleur
+    // du texte : 3.77:1, sous le seuil. La paire `secondary` sur `background` est
+    // mesurée plus haut ; ce test garde le lien entre le champ rendu et cette mesure.
+    const rendu = renderToStaticMarkup(
+      <Champ id="nom" libelle="Votre nom" placeholder="Camille Besson" />,
+    )
+    expect(rendu).toContain('placeholder:text-secondary')
+  })
+
   it('traite une chaîne vide comme une absence de message', () => {
     // `erreur={erreurs.adresse ?? ''}` ne doit ni peindre le champ en rouge ni
     // l'annoncer invalide : il n'y a pas de message à lire.

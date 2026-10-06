@@ -73,6 +73,9 @@ export function Champ({
         })}
         className={[
           'min-h-cible rounded-md border bg-background px-3 text-foreground',
+          // Le texte indicatif hérite sinon du preflight de Tailwind : la couleur du
+          // texte à 50 %, soit 3.77:1 sur le fond — sous le seuil de 4.5:1.
+          'placeholder:text-secondary',
           erreurVisible === undefined ? 'border-border' : 'border-destructive',
           className,
         ].join(' ')}

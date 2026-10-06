@@ -227,7 +227,7 @@ objection de relecture restée sans réponse.
   une course `TERMINEE`, se désengager d'une course `EN_COURSE`, accepter une course déjà
   `ACCEPTEE`.
 
-- [ ] **1.4 — Design system**
+- [x] **1.4 — Design system**
   *Critère* : les jetons de couleur et les deux fontes définis dans `app/globals.css` sont
   appliqués globalement, et aucune valeur hexadécimale ne subsiste dans un composant.
   Les composants `Bouton`, `Champ`, `BadgeEtat` et `CarteCourse` existent et sont utilisés
