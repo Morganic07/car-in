@@ -238,7 +238,7 @@ objection de relecture restée sans réponse.
 
 *Branche `epic/comptes`. Fichiers : `lib/auth.ts`, `app/(auth)/`, `proxy.ts`.*
 
-- [ ] **2.1 — Inscription client**
+- [x] **2.1 — Inscription client**
   *Critère* : e-mail, mot de passe de huit caractères minimum, nom et téléphone créent un
   compte de rôle `CLIENT`. Un e-mail déjà utilisé affiche un message à côté du champ. Un
   rôle envoyé dans le formulaire est ignoré — un test le prouve en postant
