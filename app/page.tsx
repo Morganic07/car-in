@@ -16,12 +16,20 @@ export default function Accueil() {
       <p className="text-base text-secondary">
         Les espaces client et chauffeur s&rsquo;ouvriront ici une fois les comptes en place.
       </p>
-      <Link
-        href="/inscription"
-        className="inline-flex min-h-cible items-center justify-center self-start rounded-md bg-accent px-4 font-semibold text-on-primary transition-colors duration-200 hover:bg-accent-survol"
-      >
-        Créer un compte client
-      </Link>
+      <div className="flex flex-wrap gap-2">
+        <Link
+          href="/inscription"
+          className="inline-flex min-h-cible items-center justify-center rounded-md bg-accent px-4 font-semibold text-on-primary transition-colors duration-200 hover:bg-accent-survol"
+        >
+          Créer un compte client
+        </Link>
+        <Link
+          href="/connexion"
+          className="inline-flex min-h-cible items-center justify-center rounded-md border border-border bg-background px-4 font-semibold text-foreground transition-colors duration-200 hover:bg-muted"
+        >
+          Se connecter
+        </Link>
+      </div>
     </main>
   )
 }

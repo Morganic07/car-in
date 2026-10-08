@@ -5,7 +5,10 @@
 /// duplique jamais. Les dates sont relatives à l'instant de l'exécution, pour que
 /// la démonstration reste plausible des mois plus tard.
 
+import { hashPassword } from 'better-auth/crypto'
+
 import { urlBaseDeDonnees } from '../lib/base-de-donnees.ts'
+import { MOT_DE_PASSE_MIN } from '../lib/inscription.ts'
 import { creerClientPrisma } from '../lib/prisma.ts'
 import type { PrismaClient } from './generated/client/index.js'
 
@@ -203,7 +206,20 @@ function dateDecalee(reference: Date, decalageMs: number | undefined): Date | nu
   return new Date(reference.getTime() + decalageMs)
 }
 
-export async function semer(client: PrismaClient, reference: Date = new Date()): Promise<void> {
+/// `motDePasse` donne à chaque compte de démonstration un identifiant de connexion,
+/// haché par la fonction même de Better Auth. Il n'est jamais écrit dans ce fichier :
+/// un mot de passe connu de tous, posé par la semence sur un serveur, y ouvrirait les
+/// comptes. Sans lui, les comptes existent mais ne peuvent pas se connecter.
+export async function semer(
+  client: PrismaClient,
+  reference: Date = new Date(),
+  motDePasse?: string,
+): Promise<void> {
+  // Haché une seule fois : scrypt est lent par conception, et quatre comptes de
+  // démonstration peuvent partager le même hachage sans rien affaiblir.
+  const hache = motDePasse === undefined ? undefined : await hashPassword(motDePasse)
+  const maintenant = new Date()
+
   for (const compte of COMPTES) {
     const donnees = {
       email: compte.email,
@@ -216,6 +232,25 @@ export async function semer(client: PrismaClient, reference: Date = new Date()):
       create: { id: compte.id, ...donnees },
       update: donnees,
     })
+
+    if (hache !== undefined) {
+      // La forme exacte qu'écrit Better Auth à l'inscription : fournisseur
+      // `credential`, et `accountId` égal à l'identifiant du compte — c'est ce
+      // couple que la connexion recherche.
+      await client.account.upsert({
+        where: { id: `${compte.id}-identifiants` },
+        create: {
+          id: `${compte.id}-identifiants`,
+          accountId: compte.id,
+          providerId: 'credential',
+          userId: compte.id,
+          password: hache,
+          createdAt: maintenant,
+          updatedAt: maintenant,
+        },
+        update: { password: hache, updatedAt: maintenant },
+      })
+    }
   }
 
   for (const course of COURSES) {
@@ -257,12 +292,28 @@ export async function semer(client: PrismaClient, reference: Date = new Date()):
 /// npm : cette option n'échoue pas si le fichier manque, et n'écrase pas une
 /// variable déjà présente dans l'environnement — vérifié, pas supposé.
 if (import.meta.main) {
+  // Vide ou absente : les comptes sont créés sans mot de passe, et on le dit. Trop
+  // courte : on refuse, plutôt que de poser un mot de passe que l'inscription
+  // n'accepterait pas.
+  const motDePasse = process.env.DEMO_MOT_DE_PASSE || undefined
+  if (motDePasse !== undefined && motDePasse.length < MOT_DE_PASSE_MIN) {
+    throw new Error(
+      `DEMO_MOT_DE_PASSE doit faire au moins ${MOT_DE_PASSE_MIN} caractères.`,
+    )
+  }
+
   const client = creerClientPrisma(urlBaseDeDonnees())
   try {
-    await semer(client)
+    await semer(client, new Date(), motDePasse)
     const comptes = await client.user.count()
     const courses = await client.course.count()
     console.log(`Semence appliquée : ${comptes} comptes, ${courses} courses.`)
+    console.log(
+      motDePasse === undefined
+        ? 'Comptes de démonstration SANS mot de passe : définir DEMO_MOT_DE_PASSE ' +
+            'pour pouvoir s’y connecter.'
+        : 'Comptes de démonstration connectables avec DEMO_MOT_DE_PASSE.',
+    )
   } finally {
     await client.$disconnect()
   }

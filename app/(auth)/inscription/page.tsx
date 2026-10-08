@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 
 import { FormulaireInscription } from './FormulaireInscription.tsx'
 
@@ -17,6 +18,12 @@ export default function PageInscription() {
         </p>
       </header>
       <FormulaireInscription />
+      <p className="text-secondary">
+        Déjà un compte ?{' '}
+        <Link href="/connexion" className="font-semibold text-accent underline">
+          Se connecter
+        </Link>
+      </p>
     </main>
   )
 }

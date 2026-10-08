@@ -13,13 +13,15 @@ import {
   validerInscription,
   type ValeursInscription,
 } from '../lib/inscription.ts'
+import { REGLES } from '../lib/limite-debit.ts'
 import { prisma } from '../lib/prisma.ts'
 
 // L'action serveur appelle `headers()` et `redirect()`, qui n'existent que dans une
 // requête Next. On les remplace ici par leur plus simple expression : des en-têtes
 // vides, et une redirection qu'on enregistre au lieu de la suivre.
+const requete = vi.hoisted(() => ({ entetes: new Headers() }))
 vi.mock('next/headers', () => ({
-  headers: async () => new Headers(),
+  headers: async () => requete.entetes,
   cookies: async () => {
     throw new Error('`cookies` was called outside a request scope.')
   },
@@ -139,7 +141,28 @@ describe('inscription d’un client, sur une vraie base', () => {
 
   beforeEach(() => {
     redirections.length = 0
+    requete.entetes = new Headers()
   })
+
+  it('limite le nombre d’inscriptions depuis une même origine', async () => {
+    // Sans limite, l'inscription — qui dit si une adresse est prise — permettrait de
+    // tester une liste d'adresses à la chaîne. Une origine dédiée à ce test, lue
+    // parce qu'un proxy est déclaré.
+    vi.stubEnv('CONFIANCE_PROXY', '1')
+    requete.entetes = new Headers({ 'x-forwarded-for': '198.51.100.99' })
+    const { maximum } = REGLES.inscriptionParIp
+    for (let i = 0; i < maximum; i += 1) {
+      const etat = await inscrire(
+        ETAT_INITIAL,
+        formulaire({ ...VALIDE, email: `serie-${i}@exemple.fr` }),
+      )
+      expect(etat, `inscription ${i + 1}`).toBeUndefined()
+    }
+
+    const refus = await inscrire(ETAT_INITIAL, formulaire({ ...VALIDE, email: 'de-trop@exemple.fr' }))
+    expect(refus.erreurGenerale).toBe('Trop de tentatives. Réessayez dans 60 minutes.')
+    expect(await prisma().user.count({ where: { email: 'de-trop@exemple.fr' } })).toBe(0)
+  }, 60_000)
 
   it('crée un compte CLIENT même quand le formulaire poste role=CHAUFFEUR', async () => {
     // Le critère de la story 2.1, au mot près : on poste le rôle, on lit ce qui est

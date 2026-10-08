@@ -5,6 +5,7 @@ import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 
 import { auth } from '../../../lib/auth.ts'
+import { consommer, limiteOrigine, messageLimite } from '../../../lib/limite-debit.ts'
 import { prisma } from '../../../lib/prisma.ts'
 import {
   lireFormulaire,
@@ -56,10 +57,21 @@ export async function inscrire(
   if (!validation.valide) return { valeurs: rappel, erreurs: validation.erreurs }
 
   const { nom, email, telephone, motDePasse } = validation.donnees
+  const entetes = await headers()
+
+  // Après la validation : une faute de frappe ne consomme pas d'essai. Sans cette
+  // limite, l'inscription permettrait de tester des adresses à la chaîne, puisqu'elle
+  // dit si une adresse est déjà prise.
+  const [cle, regle] = limiteOrigine('inscription', entetes)
+  const verdict = await consommer(prisma(), cle, regle)
+  if (!verdict.permis) {
+    return { valeurs: rappel, erreurs: {}, erreurGenerale: messageLimite(verdict.reessayerDansMs) }
+  }
+
   try {
     await auth().api.signUpEmail({
       body: { name: nom, email, password: motDePasse, telephone },
-      headers: await headers(),
+      headers: entetes,
     })
   } catch (erreur) {
     if (erreur instanceof APIError && (await adressePrise(erreur, email))) {

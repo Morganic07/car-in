@@ -244,7 +244,7 @@ objection de relecture restée sans réponse.
   rôle envoyé dans le formulaire est ignoré — un test le prouve en postant
   `role=CHAUFFEUR` et en vérifiant le rôle enregistré.
 
-- [ ] **2.2 — Connexion et déconnexion**
+- [x] **2.2 — Connexion et déconnexion**
   *Critère* : après connexion, la session survit à un rechargement et à la fermeture de
   l'onglet. Un mauvais mot de passe affiche un message qui ne révèle pas si l'e-mail
   existe. La déconnexion invalide la session : revenir en arrière ne redonne pas accès.
