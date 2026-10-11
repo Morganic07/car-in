@@ -1,20 +1,20 @@
 import type { Metadata } from 'next'
-import { headers } from 'next/headers'
-import { redirect } from 'next/navigation'
+import Link from 'next/link'
 
-import { auth } from '../../../lib/auth.ts'
+import { ESPACE, roleDe } from '../../../lib/acces.ts'
+import { exigerEspace } from '../../../lib/garde.ts'
 import { BoutonDeconnexion } from './BoutonDeconnexion.tsx'
 
 export const metadata: Metadata = {
   title: "Mon compte — Car'in",
 }
 
-/// Page réservée à une personne connectée. La session est relue côté serveur à chaque
-/// affichage : c'est ce qui fait qu'après une déconnexion, revenir en arrière ne
-/// redonne pas accès — le cloisonnement par rôle viendra avec la story 2.3.
+/// Page réservée à une personne connectée, quel que soit son rôle. La session est
+/// relue côté serveur à chaque affichage : c'est ce qui fait qu'après une
+/// déconnexion, revenir en arrière ne redonne pas accès.
 export default async function PageCompte() {
-  const session = await auth().api.getSession({ headers: await headers() })
-  if (session === null) redirect('/connexion')
+  const session = await exigerEspace(null)
+  const role = roleDe(session)
 
   return (
     <main className="mx-auto flex max-w-md flex-col gap-6 px-4 py-12">
@@ -29,6 +29,9 @@ export default async function PageCompte() {
           <dd className="break-all text-foreground">{session.user.email}</dd>
         </div>
       </dl>
+      <Link href={ESPACE[role]} className="self-start font-semibold text-accent underline">
+        {role === 'CHAUFFEUR' ? 'Mon espace chauffeur' : 'Mon espace client'}
+      </Link>
       <BoutonDeconnexion />
     </main>
   )
