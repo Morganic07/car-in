@@ -249,7 +249,7 @@ objection de relecture restée sans réponse.
   l'onglet. Un mauvais mot de passe affiche un message qui ne révèle pas si l'e-mail
   existe. La déconnexion invalide la session : revenir en arrière ne redonne pas accès.
 
-- [ ] **2.3 — Cloisonnement des deux espaces**
+- [x] **2.3 — Cloisonnement des deux espaces**
   *Critère* : un client qui ouvre une URL de `/chauffeur` est redirigé vers son espace, et
   réciproquement. Un visiteur non connecté est envoyé vers la connexion. Un test appelle
   une action chauffeur avec une session client et attend un refus explicite (S12).
