@@ -430,4 +430,60 @@ describe('session et déconnexion', () => {
     expect(await executer(() => deconnecter())).toBeUndefined()
     expect(requete.redirections).toEqual(['/connexion'])
   })
+
+  /// Rejoue une connexion depuis un navigateur qui porte déjà le cookie `cookie`.
+  async function reconnecter(cookie: string): Promise<EtatConnexion | undefined> {
+    requete.entetes = nouvelleOrigine()
+    requete.entetes.set('cookie', cookie)
+    return executer(() =>
+      connecter(ETAT_INITIAL, formulaire({ email: CLIENT_DEMO, motDePasse: MOT_DE_PASSE })),
+    )
+  }
+
+  it('ferme la session précédente quand on se reconnecte', async () => {
+    const { cookie } = await ouvrirSession(CLIENT_DEMO)
+    const ancienne = await auth().api.getSession({ headers: new Headers({ cookie }) })
+    expect(ancienne).not.toBeNull()
+    requete.cookies.clear()
+
+    expect(await reconnecter(cookie)).toBeUndefined()
+    expect(requete.redirections).toEqual(['/compte'])
+
+    // Relevé tout de suite : tout appel à Better Auth passe par `nextCookies`, et un
+    // `getSession` sur l'ancien jeton, désormais invalide, effacerait le magasin.
+    const nouveau = requete.cookies.get('better-auth.session_token')?.value ?? ''
+    expect(nouveau).not.toBe('')
+    expect(cookie).not.toContain(nouveau)
+
+    // L'ancien jeton ne vaut plus rien ; le nouveau désigne une session ouverte.
+    expect(await prisma().session.count({ where: { id: ancienne?.session.id } })).toBe(0)
+    expect(await auth().api.getSession({ headers: new Headers({ cookie }) })).toBeNull()
+    const ouverte = await auth().api.getSession({
+      headers: new Headers({ cookie: `better-auth.session_token=${nouveau}` }),
+    })
+    expect(ouverte?.user.email).toBe(CLIENT_DEMO)
+  })
+
+  it('connecte quand même si la session précédente ne peut pas être fermée', async () => {
+    const { cookie } = await ouvrirSession(CLIENT_DEMO)
+    const ancienne = await auth().api.getSession({ headers: new Headers({ cookie }) })
+    requete.cookies.clear()
+
+    await prisma().$executeRawUnsafe(
+      `CREATE TRIGGER "panne_suppression_session" BEFORE DELETE ON "Session"
+       BEGIN SELECT RAISE(ABORT, 'suppression de session refusée'); END`,
+    )
+    const journal = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      expect(await reconnecter(cookie)).toBeUndefined()
+      expect(requete.redirections).toEqual(['/compte'])
+      expect(journal).toHaveBeenCalledOnce()
+    } finally {
+      journal.mockRestore()
+      await prisma().$executeRawUnsafe('DROP TRIGGER "panne_suppression_session"')
+    }
+    // L'échec est dit dans le journal, pas caché : l'ancienne session est restée.
+    expect(await prisma().session.count({ where: { id: ancienne?.session.id } })).toBe(1)
+    expect(requete.cookies.get('better-auth.session_token')).toBeDefined()
+  })
 })

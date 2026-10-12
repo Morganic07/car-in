@@ -35,6 +35,41 @@ const REFUS_DE_LA_BRIQUE = new Set([
   'PASSWORD_TOO_LONG',
 ])
 
+/// Une connexion postée alors qu'une session est déjà ouverte en crée une seconde :
+/// le nouveau cookie remplace l'ancien dans le navigateur, mais l'ancienne session
+/// resterait valide en base, pour quiconque aurait copié son jeton. Les en-têtes de
+/// la requête portent encore l'ancien cookie : on retrouve la session qu'il désigne
+/// et on la supprime.
+///
+/// La lecture se fait **avant** la connexion, par précaution : le plugin
+/// `nextCookies` recopie dans le navigateur tout cookie que renvoie un appel à Better
+/// Auth, `getSession` compris. Placée avant, une lecture ne peut rien écrire que
+/// `signInEmail` ne réécrive ensuite. (Placée après, elle n'écrit rien aujourd'hui —
+/// essayé —, mais rien ne garantit qu'une version suivante s'en abstienne.)
+///
+/// Un échec de lecture ou de suppression ne défait pas la connexion : il est
+/// journalisé, et l'ancienne session expire d'elle-même.
+async function lireSessionPrecedente(entetes: Headers): Promise<string | null> {
+  try {
+    const precedente = await auth().api.getSession({
+      headers: entetes,
+      query: { disableRefresh: true },
+    })
+    return precedente?.session.id ?? null
+  } catch (erreur) {
+    console.error('Connexion : la session précédente n’a pas pu être lue.', erreur)
+    return null
+  }
+}
+
+async function fermerSession(id: string): Promise<void> {
+  try {
+    await prisma().session.deleteMany({ where: { id } })
+  } catch (erreur) {
+    console.error(`Connexion : la session précédente ${id} n’a pas pu être fermée.`, erreur)
+  }
+}
+
 export async function connecter(
   _precedent: EtatConnexion,
   formulaire: FormData,
@@ -65,6 +100,8 @@ export async function connecter(
     }
   }
 
+  const precedente = await lireSessionPrecedente(entetes)
+
   try {
     await auth().api.signInEmail({ body: { email, password: motDePasse }, headers: entetes })
   } catch (erreur) {
@@ -84,6 +121,8 @@ export async function connecter(
   // à zéro : sans proxy, il est commun à tous, et un attaquant l'effacerait en se
   // connectant à son propre compte.
   await oublier(prisma(), cleEmail)
+
+  if (precedente !== null) await fermerSession(precedente)
 
   // Hors du `try` : `redirect` lève une exception qui n'est pas une panne.
   redirect('/compte')
