@@ -30,19 +30,88 @@ enum EtatCourse {
   ANNULEE
 }
 
-/// `User` et non `Utilisateur` : la brique d'authentification de l'epic 2 attend ce
-/// nom de modèle, ainsi que `Session`, `Account` et `Verification` qu'elle ajoutera.
-/// Le vocabulaire métier reste en français partout ailleurs.
+/// `User` et non `Utilisateur` : Better Auth (lib/auth.ts) attend ce nom de modèle,
+/// ainsi que `Session`, `Account` et `Verification`. Le vocabulaire métier reste en
+/// français partout ailleurs — `nom` est déclaré à Better Auth comme son champ `name`.
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  nom       String
-  telephone String
-  role      Role     @default(CLIENT)
-  createdAt DateTime @default(now())
+  id            String   @id @default(cuid())
+  email         String   @unique
+  nom           String
+  telephone     String
+  /// Jamais fourni par un formulaire : Better Auth le déclare `input: false` et pose
+  /// la valeur par défaut à l'inscription, quoi que le client envoie (story 2.1).
+  role          Role     @default(CLIENT)
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now())
+  /// `@default(now())` en plus de `@updatedAt` : la colonne arrive sur une table déjà
+  /// remplie par la semence, et SQLite exige une valeur pour les lignes existantes.
+  updatedAt     DateTime @default(now()) @updatedAt
 
-  coursesCommandees Course[] @relation("CourseClient")
-  coursesConduites  Course[] @relation("CourseChauffeur")
+  sessions          Session[]
+  accounts          Account[]
+  coursesCommandees Course[]  @relation("CourseClient")
+  coursesConduites  Course[]  @relation("CourseChauffeur")
+}
+
+/// Tables de Better Auth, à ses noms de champs : elles ne portent aucune notion du
+/// métier, et les renommer obligerait à déclarer chaque correspondance.
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime
+  updatedAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Le mot de passe haché (scrypt) vit ici, dans `password`, jamais dans `User`.
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@index([userId])
+}
+
+/// Compteur de tentatives pour la limite de débit (lib/limite-debit.ts). Le limiteur de
+/// Better Auth ne s'applique qu'aux requêtes passées par son routeur HTTP, jamais aux
+/// appels `auth().api` des actions serveur : celui-ci le remplace.
+///
+/// `debutMs` en millisecondes depuis l'époque, et non en `DateTime` : la comparaison
+/// se fait dans la requête SQL elle-même, et un entier s'y compare sans dépendre de la
+/// façon dont le pilote stocke les dates.
+model LimiteDebit {
+  cle        String @id
+  tentatives Int
+  debutMs    BigInt
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  @@index([identifier])
 }
 
 model Course {

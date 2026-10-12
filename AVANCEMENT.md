@@ -238,18 +238,18 @@ objection de relecture restée sans réponse.
 
 *Branche `epic/comptes`. Fichiers : `lib/auth.ts`, `app/(auth)/`, `proxy.ts`.*
 
-- [ ] **2.1 — Inscription client**
+- [x] **2.1 — Inscription client**
   *Critère* : e-mail, mot de passe de huit caractères minimum, nom et téléphone créent un
   compte de rôle `CLIENT`. Un e-mail déjà utilisé affiche un message à côté du champ. Un
   rôle envoyé dans le formulaire est ignoré — un test le prouve en postant
   `role=CHAUFFEUR` et en vérifiant le rôle enregistré.
 
-- [ ] **2.2 — Connexion et déconnexion**
+- [x] **2.2 — Connexion et déconnexion**
   *Critère* : après connexion, la session survit à un rechargement et à la fermeture de
   l'onglet. Un mauvais mot de passe affiche un message qui ne révèle pas si l'e-mail
   existe. La déconnexion invalide la session : revenir en arrière ne redonne pas accès.
 
-- [ ] **2.3 — Cloisonnement des deux espaces**
+- [x] **2.3 — Cloisonnement des deux espaces**
   *Critère* : un client qui ouvre une URL de `/chauffeur` est redirigé vers son espace, et
   réciproquement. Un visiteur non connecté est envoyé vers la connexion. Un test appelle
   une action chauffeur avec une session client et attend un refus explicite (S12).

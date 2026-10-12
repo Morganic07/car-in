@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
 
 import { BadgeEtat } from '../../components/ui/BadgeEtat.tsx'
 import { Bouton } from '../../components/ui/Bouton.tsx'
@@ -61,7 +62,11 @@ function Section({
   )
 }
 
+/// Page interne : elle n'existe qu'en développement. En production, elle répond 404
+/// comme une adresse inconnue — c'est le serveur qui le décide, pas un lien masqué.
 export default function PageDesign() {
+  if (process.env.NODE_ENV === 'production') notFound()
+
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-8 px-4 py-12">
       <header className="flex flex-col gap-2">
