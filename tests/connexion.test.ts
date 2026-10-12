@@ -1,8 +1,10 @@
 import { execFileSync } from 'node:child_process'
 import { mkdtempSync, rmSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
+import { cookies as cookiesSimules } from 'next/headers'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { deconnecter } from '../app/(auth)/compte/actions.ts'
@@ -13,15 +15,55 @@ import { REGLES, consommer, limiteOrigine, messageLimite, origine } from '../lib
 import { prisma } from '../lib/prisma.ts'
 import { semer } from '../prisma/semence.mts'
 
-// Les actions serveur lisent les en-têtes de la requête et redirigent : hors de Next,
-// les en-têtes sont ceux que le test choisit, et la redirection est enregistrée.
-const requete = vi.hoisted(() => ({ entetes: new Headers(), redirections: [] as string[] }))
+// Les actions serveur lisent les en-têtes de la requête, posent des cookies et
+// redirigent : hors de Next, les en-têtes sont ceux que le test choisit, les cookies
+// posés sont gardés dans un magasin en mémoire, et la redirection est enregistrée.
+//
+// Le magasin est un vrai magasin, et non une simulation qui lève : le plugin
+// `nextCookies()` de Better Auth tait précisément l'erreur « outside a request
+// scope », si bien qu'une simulation qui la lève rendrait la connexion verte même
+// sans plugin — donc sans aucun cookie posé.
+const requete = vi.hoisted(() => ({
+  entetes: new Headers(),
+  redirections: [] as string[],
+  cookies: new Map<string, { value: string; options: Record<string, unknown> }>(),
+}))
 vi.mock('next/headers', () => ({
   headers: async () => requete.entetes,
-  cookies: async () => {
-    throw new Error('`cookies` was called outside a request scope.')
-  },
+  cookies: async () => ({
+    get: (nom: string) => {
+      const cookie = requete.cookies.get(nom)
+      return cookie === undefined ? undefined : { name: nom, value: cookie.value }
+    },
+    getAll: () =>
+      [...requete.cookies].map(([name, cookie]) => ({ name, value: cookie.value })),
+    has: (nom: string) => requete.cookies.has(nom),
+    set: (nom: string, value: string, options: Record<string, unknown> = {}) => {
+      requete.cookies.set(nom, { value, options })
+    },
+    delete: (nom: string) => {
+      requete.cookies.delete(nom)
+    },
+  }),
 }))
+
+// `vi.mock` ne s'applique qu'au code que Vitest transforme. Better Auth, dépendance
+// externe, est chargé par Node lui-même : son plugin `nextCookies()` importe le vrai
+// `next/headers.js`, dont `cookies()` lève « outside a request scope » — erreur que le
+// plugin tait. Sans ce relais, aucun cookie ne serait jamais posé dans ce fichier, et
+// un test qui le vérifie serait rouge quoi qu'on fasse (constaté).
+//
+// On remplace donc `cookies` dans le module CommonJS réel, **avant** que Better Auth
+// ne l'importe (il le fait paresseusement, au premier appel) : l'espace de noms ESM
+// d'un module CommonJS reprend les exports présents à son premier import. Le relais
+// ne sert le magasin qu'à ce fichier, et rend la main au vrai `cookies()` ensuite.
+const nextHeadersNatif = createRequire(import.meta.url)('next/headers.js') as {
+  cookies: (...args: unknown[]) => unknown
+}
+const cookiesNatif = nextHeadersNatif.cookies
+let relaisCookiesActif = true
+nextHeadersNatif.cookies = (...args: unknown[]) =>
+  relaisCookiesActif ? cookiesSimules() : cookiesNatif(...args)
 vi.mock('next/navigation', () => ({
   redirect: (chemin: string) => {
     requete.redirections.push(chemin)
@@ -78,6 +120,7 @@ beforeAll(async () => {
 }, 120_000)
 
 afterAll(async () => {
+  relaisCookiesActif = false
   await prisma().$disconnect()
   vi.unstubAllEnvs()
   rmSync(dossier, { recursive: true, force: true })
@@ -86,6 +129,7 @@ afterAll(async () => {
 beforeEach(() => {
   requete.entetes = nouvelleOrigine()
   requete.redirections.length = 0
+  requete.cookies.clear()
 })
 
 describe('limite de débit', () => {
@@ -124,7 +168,7 @@ describe('limite de débit', () => {
   })
 
   it('lit l’origine dans les en-têtes du proxy, seulement si un proxy est déclaré', () => {
-    const transmise = new Headers({ 'x-forwarded-for': '198.51.100.7, 10.0.0.1' })
+    const transmise = new Headers({ 'x-forwarded-for': '198.51.100.7' })
     expect(origine(transmise)).toBe('198.51.100.7')
     expect(origine(new Headers())).toBeNull()
 
@@ -144,6 +188,28 @@ describe('limite de débit', () => {
     } finally {
       vi.stubEnv('CONFIANCE_PROXY', '1')
     }
+  })
+
+  it('retient l’adresse ajoutée par le proxy, à droite, jamais celle écrite par le client', () => {
+    // Le proxy ajoute l'adresse qu'il voit en fin d'en-tête ; ce qui précède vient du
+    // client, qui en changerait à chaque essai pour ouvrir un compteur neuf.
+    const avec = (valeur: string) => origine(new Headers({ 'x-forwarded-for': valeur }))
+    expect(avec('1.2.3.4, 198.51.100.7')).toBe('198.51.100.7')
+    expect(avec('1.2.3.4,198.51.100.7')).toBe('198.51.100.7')
+    expect(avec('  1.2.3.4 ,  5.6.7.8  ,   198.51.100.7   ')).toBe('198.51.100.7')
+
+    // Le client a beau changer sa partie, la clé de la limite ne bouge pas.
+    const cles = ['10.0.0.1', '10.0.0.2', '10.0.0.3'].map(
+      (falsifiee) =>
+        limiteOrigine('connexion', new Headers({ 'x-forwarded-for': `${falsifiee}, 198.51.100.7` }))[0],
+    )
+    expect(new Set(cles)).toEqual(new Set(['connexion:ip:198.51.100.7']))
+
+    // Rien d'ajouté par le proxy : pas d'origine, et surtout pas celle du client.
+    expect(avec('1.2.3.4, ')).toBeNull()
+    expect(avec('1.2.3.4,')).toBeNull()
+    expect(avec('   ')).toBeNull()
+    expect(avec('')).toBeNull()
   })
 
   it('purge les compteurs expirés', async () => {
@@ -168,6 +234,29 @@ describe('connexion', () => {
     expect(etat).toBeUndefined()
     expect(requete.redirections).toEqual(['/compte'])
     expect(await prisma().session.count({ where: { userId: 'demo-client' } })).toBeGreaterThan(0)
+  })
+
+  it('pose le cookie de session, qui désigne une session existante en base', async () => {
+    // Une session créée en base sans cookie posé laisserait l'utilisateur à la porte :
+    // c'est le plugin `nextCookies()` qui fait la jonction avec l'action serveur.
+    const etat = await executer(() =>
+      connecter(ETAT_INITIAL, formulaire({ email: CLIENT_DEMO, motDePasse: MOT_DE_PASSE })),
+    )
+    expect(etat).toBeUndefined()
+
+    const cookie = requete.cookies.get('better-auth.session_token')
+    expect(cookie, 'cookie de session posé').toBeDefined()
+    expect(cookie?.options).toMatchObject({ httpOnly: true, path: '/' })
+
+    // Le cookie est signé (« jeton.signature ») : c'est Better Auth qui le relit,
+    // exactement comme il le ferait à la requête suivante du navigateur.
+    const session = await auth().api.getSession({
+      headers: new Headers({ cookie: `better-auth.session_token=${cookie?.value ?? ''}` }),
+    })
+    expect(session?.user.email).toBe(CLIENT_DEMO)
+    expect(
+      await prisma().session.count({ where: { id: session?.session.id, userId: 'demo-client' } }),
+    ).toBe(1)
   })
 
   it('accepte l’adresse quelle que soit sa casse', async () => {
@@ -292,6 +381,48 @@ describe('session et déconnexion', () => {
     // Le même cookie, rejoué comme le ferait le bouton « précédent » ou un vol de
     // jeton : la session n'existe plus.
     expect(await auth().api.getSession({ headers: avecCookie })).toBeNull()
+  })
+
+  it('garde le cookie et dit l’échec quand la base refuse de supprimer la session', async () => {
+    // Better Auth efface le cookie même si la suppression en base échoue : le second
+    // clic, sans cookie, renverrait alors à la connexion sans un mot, la session
+    // restant valide en base. L'échec doit rester honnête **et** rattrapable.
+    const { cookie } = await ouvrirSession(CLIENT_DEMO)
+    const avecCookie = new Headers({ cookie })
+    const ouverte = await auth().api.getSession({ headers: avecCookie })
+    expect(ouverte).not.toBeNull()
+    requete.cookies.clear() // la connexion ci-dessus a posé ses propres cookies
+
+    // Une vraie panne de la base, pas une simulation du client : SQLite refuse toute
+    // suppression de session, quel que soit le code qui la tente.
+    await prisma().$executeRawUnsafe(
+      `CREATE TRIGGER "panne_suppression_session" BEFORE DELETE ON "Session"
+       BEGIN SELECT RAISE(ABORT, 'suppression de session refusée'); END`,
+    )
+    const journal = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      requete.entetes = avecCookie
+      const etat = await executer(() => deconnecter())
+      expect(etat).toEqual({ erreur: 'La déconnexion a échoué. Réessayez dans un instant.' })
+      expect(requete.redirections).toEqual([])
+      // Le cookie n'a pas été effacé : le navigateur garde de quoi réessayer.
+      expect([...requete.cookies.keys()]).toEqual([])
+      expect(journal).toHaveBeenCalled()
+    } finally {
+      journal.mockRestore()
+      await prisma().$executeRawUnsafe('DROP TRIGGER "panne_suppression_session"')
+    }
+    expect(await prisma().session.count({ where: { id: ouverte?.session.id } })).toBe(1)
+
+    // La base revenue, le même clic aboutit : session supprimée, cookie effacé.
+    const etat = await executer(() => deconnecter())
+    expect(etat).toBeUndefined()
+    expect(requete.redirections).toEqual(['/connexion?deconnecte=1'])
+    expect(await prisma().session.count({ where: { id: ouverte?.session.id } })).toBe(0)
+    expect(await auth().api.getSession({ headers: avecCookie })).toBeNull()
+    const efface = requete.cookies.get('better-auth.session_token')
+    expect(efface?.value).toBe('')
+    expect(efface?.options).toMatchObject({ maxAge: 0 })
   })
 
   it('renvoie vers la connexion sans session à fermer', async () => {

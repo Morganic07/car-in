@@ -11,7 +11,13 @@ import { prisma } from './prisma.ts'
 /// brique elle-même ; en production, elle refuse de démarrer sans secret.
 export function creerAuth(client: PrismaClient) {
   return betterAuth({
-    database: prismaAdapter(client, { provider: 'sqlite' }),
+    // `transaction: true` : l'inscription écrit l'utilisateur, puis son « Account »
+    // (le mot de passe), puis la session. Sans transaction, un échec au milieu
+    // laisserait un compte sans mot de passe et son adresse prise. L'option est
+    // désactivée par défaut dans l'adaptateur Prisma de Better Auth 1.7.7 ; elle
+    // passe par une transaction interactive Prisma, que l'adaptateur better-sqlite3
+    // prend en charge (tests/auth.test.ts le vérifie sur une vraie base).
+    database: prismaAdapter(client, { provider: 'sqlite', transaction: true }),
     emailAndPassword: {
       enabled: true,
       minPasswordLength: MOT_DE_PASSE_MIN,

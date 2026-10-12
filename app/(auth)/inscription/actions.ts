@@ -8,6 +8,7 @@ import { auth } from '../../../lib/auth.ts'
 import { consommer, limiteOrigine, messageLimite } from '../../../lib/limite-debit.ts'
 import { prisma } from '../../../lib/prisma.ts'
 import {
+  EMAIL_INVALIDE,
   lireFormulaire,
   validerInscription,
   type ErreursInscription,
@@ -74,6 +75,14 @@ export async function inscrire(
       headers: entetes,
     })
   } catch (erreur) {
+    // Filet : notre validation suit la règle de Better Auth (lib/inscription.ts), donc
+    // ce refus ne devrait pas arriver. Si une montée de version les faisait diverger,
+    // l'utilisateur lit au moins l'erreur à côté du champ, pas une panne qu'aucun
+    // nouvel essai ne corrige. Journalisé : c'est le signe d'une divergence à réparer.
+    if (erreur instanceof APIError && String(erreur.body?.code) === 'INVALID_EMAIL') {
+      console.error('Adresse refusée par Better Auth malgré notre validation :', erreur)
+      return { valeurs: rappel, erreurs: { email: EMAIL_INVALIDE } }
+    }
     if (erreur instanceof APIError && (await adressePrise(erreur, email))) {
       return {
         valeurs: rappel,

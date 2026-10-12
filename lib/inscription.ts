@@ -21,10 +21,25 @@ export const MOT_DE_PASSE_MIN = 8
 export const MOT_DE_PASSE_MAX = 128
 const NOM_MAX = 100
 
-/// Volontairement simple : la vraie preuve qu'une adresse existe est un message
-/// reçu, pas une expression rationnelle. On écarte seulement ce qui ne peut pas en
-/// être une.
-const FORME_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+/// Exactement la règle de Better Auth, ni plus large ni plus stricte. Better Auth
+/// refuse l'inscription et la connexion par `z.email()` (zod, `INVALID_EMAIL`) : une
+/// règle plus large ici laisserait passer des adresses — accents, `..`, domaine de
+/// premier niveau d'une lettre — que la brique refuse ensuite, et l'utilisateur lirait
+/// une panne générique, qu'aucun nouvel essai ne corrige, au lieu d'un message à côté
+/// du champ.
+///
+/// Recopiée, pas importée : zod n'est qu'une dépendance transitive de Better Auth, et
+/// l'importer d'ici ferait reposer le formulaire sur un paquet que le projet ne
+/// déclare pas. Source : `node_modules/zod/v4/core/regexes.js`, constante `email`,
+/// zod 4.6.5 (celle que résout better-auth 1.7.7). tests/inscription.test.ts compare
+/// notre verdict à celui de `z.email()` sur des adresses limites : une montée de zod
+/// qui changerait la règle y rougit.
+const FORME_EMAIL =
+  /^(?:[A-Za-z0-9_'+\-]+\.)*[A-Za-z0-9_'+\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$/
+
+/// Rendu à côté du champ, par la validation comme par l'action serveur quand Better
+/// Auth refuse l'adresse malgré elle.
+export const EMAIL_INVALIDE = 'Cette adresse e-mail n’est pas valide.'
 
 /// Numéro français, fixe ou mobile, avec ou sans indicatif.
 const FORME_TELEPHONE = /^(?:\+33|0033|0)[1-9]\d{8}$/
@@ -54,7 +69,7 @@ export function erreurChamp(champ: ChampInscription, valeur: string): string | u
     case 'email': {
       const email = normaliserEmail(valeur)
       if (email === '') return 'Indiquez votre adresse e-mail.'
-      if (!FORME_EMAIL.test(email)) return 'Cette adresse e-mail n’est pas valide.'
+      if (!FORME_EMAIL.test(email)) return EMAIL_INVALIDE
       return undefined
     }
     case 'telephone': {

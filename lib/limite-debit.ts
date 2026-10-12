@@ -93,10 +93,19 @@ export async function oublier(client: PrismaClient, cle: string): Promise<void> 
 /// qu'un proxy écrit dans `x-forwarded-for` est disponible. Or ce projet tourne sans
 /// proxy (PLAN.md) — c'est le cas nominal, pas une exception — et sans proxy, cet
 /// en-tête est écrit par le client lui-même, qui en change à volonté. Il n'est donc lu
-/// que si `CONFIANCE_PROXY=1` déclare qu'un proxy le réécrit.
+/// que si `CONFIANCE_PROXY=1` déclare qu'un proxy le complète.
+///
+/// C'est la valeur la plus à **droite** qui compte : un proxy courant (nginx et son
+/// `$proxy_add_x_forwarded_for`, la plupart des hébergeurs) **ajoute** l'adresse
+/// qu'il voit à la fin de ce que le client a envoyé. Tout ce qui précède est écrit par
+/// le client ; lire la valeur de gauche lui laisserait ouvrir un compteur neuf à
+/// chaque essai. Un seul proxy de confiance est pris en charge — un seul saut.
+///
+/// Une dernière valeur vide veut dire que le proxy n'a rien ajouté : on ne remonte pas
+/// à la précédente, qui viendrait du client, et l'on retombe sur le plafond global.
 export function origine(entetes: Headers): string | null {
   if (process.env.CONFIANCE_PROXY !== '1') return null
-  const transmise = entetes.get('x-forwarded-for')?.split(',')[0]?.trim()
+  const transmise = entetes.get('x-forwarded-for')?.split(',').at(-1)?.trim()
   return transmise ? transmise : null
 }
 
