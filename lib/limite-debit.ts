@@ -1,6 +1,7 @@
 import type { PrismaClient } from '../prisma/generated/client/index.js'
 
-/// Limite de débit des actions d'authentification.
+/// Limite de débit des actions d'authentification, et des appels à un service
+/// externe payé au quota.
 ///
 /// Nécessaire parce que le limiteur de Better Auth ne protège que les requêtes HTTP
 /// passées par son routeur : un appel `auth().api.…` depuis une action serveur — notre
@@ -31,7 +32,27 @@ export const REGLES = {
   inscriptionParIp: { maximum: 10, fenetreMs: 60 * 60_000 },
   /// Même plafond de sauvegarde, sans origine fiable.
   inscriptionGlobale: { maximum: 100, fenetreMs: 60 * 60_000 },
+  /// Estimations d'itinéraire par client connecté (story 3.2) : le quota gratuit
+  /// d'openrouteservice (2 500 par jour) est commun à toute la compagnie, et un seul
+  /// client ne doit pas pouvoir l'épuiser. Large pour un usage réel : chaque paire
+  /// d'adresses choisie coûte une estimation.
+  estimationParClient: { maximum: 60, fenetreMs: 60 * 60_000 },
+  /// Plafond commun sous le quota quotidien d'openrouteservice : la règle par client
+  /// ne suffit pas, deux comptes à 60 par heure le dépasseraient en une journée.
+  /// Compté par jour UTC (la clé porte la date, voir `cleEstimationGlobale`) : une
+  /// fenêtre glissante de 24 h laisserait passer deux plafonds dans le même jour du
+  /// service. 1 500 laisse de la marge sous le quota du point d'accès « directions »,
+  /// annoncé selon les sources à 2 000 ou 2 500 par jour. Atteint, chacun voit
+  /// « prix confirmé par la compagnie » (S11) plutôt qu'une panne.
+  estimationGlobale: { maximum: 1500, fenetreMs: 24 * 60 * 60_000 },
 } as const satisfies Record<string, Regle>
+
+/// Clé du plafond commun d'estimations : une par jour UTC, le jour sur lequel le
+/// service compte son quota. La fenêtre de 24 h de la règle ne fait alors qu'effacer la
+/// ligne de la veille.
+export function cleEstimationGlobale(maintenantMs: number = Date.now()): string {
+  return `estimation:globale:${new Date(maintenantMs).toISOString().slice(0, 10)}`
+}
 
 /// La plus longue fenêtre : une ligne plus ancienne est expirée pour toutes les règles.
 const FENETRE_MAX_MS = Math.max(...Object.values(REGLES).map((regle) => regle.fenetreMs))

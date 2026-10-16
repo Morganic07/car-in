@@ -211,6 +211,16 @@ export function erreurSaisie(
 // Côté serveur : relire l'adresse envoyée par le formulaire.
 // ---------------------------------------------------------------------------
 
+/// Revalide une adresse reçue telle quelle par une action serveur (argument, et non
+/// champ de formulaire) : rien de ce qui vient du navigateur n'est cru sur parole.
+export function adresseDepuis(valeur: unknown): Adresse | null {
+  if (typeof valeur !== 'object' || valeur === null) return null
+  const { label, lat, lon } = valeur as Record<string, unknown>
+  if (typeof label !== 'string' || label.trim() === '' || label.length > LONGUEUR_MAX) return null
+  if (!coordonneesValides(lat, lon)) return null
+  return { label, lat, lon: lon as number }
+}
+
 export type ChampAdresse = 'depart' | 'arrivee'
 
 export const ADRESSE_MANQUANTE: Record<ChampAdresse, string> = {
