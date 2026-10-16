@@ -259,7 +259,7 @@ objection de relecture restée sans réponse.
 *Branche `epic/reserver`. Fichiers : `app/(client)/`, `lib/adresse.ts`, `lib/tarif.ts`,
 `components/carte/`.*
 
-- [ ] **3.1 — Saisie d'adresse avec autocomplétion**
+- [x] **3.1 — Saisie d'adresse avec autocomplétion**
   *Critère* : à partir de trois caractères et après 300 ms sans frappe, des propositions
   s'affichent, navigables au clavier et sélectionnables à la souris. L'adresse retenue
   porte ses coordonnées. Si l'utilisateur tape sans rien sélectionner, la validation est
