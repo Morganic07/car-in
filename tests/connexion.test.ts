@@ -214,8 +214,11 @@ describe('limite de débit', () => {
 
   it('purge les compteurs expirés', async () => {
     await consommer(prisma(), 'essai:ancien', regle, 1_000)
-    // Bien plus tard que la plus longue fenêtre : la ligne doit avoir disparu.
-    await consommer(prisma(), 'essai:recent', regle, 1_000 + 2 * 60 * 60_000)
+    // Bien plus tard que la plus longue fenêtre : la ligne doit avoir disparu. Écart
+    // tiré des règles, pas figé : une règle plus longue (24 h pour les estimations)
+    // ne doit pas rendre ce test faux.
+    const plusLongue = Math.max(...Object.values(REGLES).map((r) => r.fenetreMs))
+    await consommer(prisma(), 'essai:recent', regle, 1_000 + plusLongue + 60 * 60_000)
     expect(await prisma().limiteDebit.count({ where: { cle: 'essai:ancien' } })).toBe(0)
     expect(await prisma().limiteDebit.count({ where: { cle: 'essai:recent' } })).toBe(1)
   })

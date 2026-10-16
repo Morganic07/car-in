@@ -266,7 +266,7 @@ objection de relecture restée sans réponse.
   refusée avec un message à côté du champ (S10). Le service indisponible affiche un message
   et ne bloque pas la page.
 
-- [ ] **3.2 — Estimation distance, durée et prix**
+- [x] **3.2 — Estimation distance, durée et prix**
   *Critère* : pour deux adresses géolocalisées, la distance, la durée et le prix calculé
   depuis la grille tarifaire s'affichent avant validation. En cas d'échec du service ou de
   clé absente, l'écran affiche « prix confirmé par la compagnie », la réservation reste

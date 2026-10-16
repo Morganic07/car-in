@@ -11,6 +11,7 @@ import {
   evoluer,
   erreurSaisie,
   rechercherAdresses,
+  type Adresse,
   type ChampAdresse as NomChamp,
 } from '../../../../lib/adresse.ts'
 
@@ -22,6 +23,9 @@ type ProprietesChampAdresse = {
   readonly erreur?: string
   /// Appelé au `blur` avec le verdict local (`null` : rien à redire).
   readonly onVerifier: (erreur: string | null) => void
+  /// Appelé quand l'adresse retenue change : une proposition choisie, ou `null`
+  /// quand une frappe défait le choix.
+  readonly onRetenue?: (adresse: Adresse | null) => void
 }
 
 /// Champ d'adresse avec propositions de la Base Adresse Nationale, selon le motif
@@ -31,8 +35,23 @@ type ProprietesChampAdresse = {
 /// Seule une proposition choisie remplit les trois champs cachés (libellé, latitude,
 /// longitude) que lit le serveur. Un texte tapé sans choix part sans coordonnées, et
 /// le serveur le refuse (S10).
-export function ChampAdresse({ champ, libelle, manquante, erreur, onVerifier }: ProprietesChampAdresse) {
+export function ChampAdresse({
+  champ,
+  libelle,
+  manquante,
+  erreur,
+  onVerifier,
+  onRetenue,
+}: ProprietesChampAdresse) {
   const [etat, envoyer] = useReducer(evoluer, null, () => etatInitial())
+
+  function choisir(index: number) {
+    const choisie = etat.ouverte ? etat.propositions[index] : undefined
+    if (choisie === undefined) return
+    envoyer({ type: 'choisir', index })
+    onVerifier(null)
+    onRetenue?.(choisie)
+  }
   const id = `champ-${champ}`
   const idListe = `${id}-propositions`
   const idEtat = `${id}-etat`
@@ -73,8 +92,7 @@ export function ChampAdresse({ champ, libelle, manquante, erreur, onVerifier }: 
         // Entrée choisit la proposition surlignée au lieu d'envoyer le formulaire.
         if (etat.ouverte && etat.active !== -1) {
           evenement.preventDefault()
-          envoyer({ type: 'choisir', index: etat.active })
-          onVerifier(null)
+          choisir(etat.active)
         }
         return
       case 'Escape':
@@ -134,7 +152,10 @@ export function ChampAdresse({ champ, libelle, manquante, erreur, onVerifier }: 
           .filter(Boolean)
           .join(' ')}
         value={etat.saisie}
-        onChange={(evenement) => envoyer({ type: 'frappe', saisie: evenement.currentTarget.value })}
+        onChange={(evenement) => {
+          envoyer({ type: 'frappe', saisie: evenement.currentTarget.value })
+          if (etat.retenue !== null) onRetenue?.(null)
+        }}
         onKeyDown={auClavier}
         onBlur={() => {
           envoyer({ type: 'fermer' })
@@ -167,10 +188,7 @@ export function ChampAdresse({ champ, libelle, manquante, erreur, onVerifier }: 
             // `mousedown` garde le focus dans le champ : sans cela, le `blur` fermerait
             // la liste avant que le clic n'arrive.
             onMouseDown={(evenement) => evenement.preventDefault()}
-            onClick={() => {
-              envoyer({ type: 'choisir', index })
-              onVerifier(null)
-            }}
+            onClick={() => choisir(index)}
             className={[
               'flex min-h-cible cursor-pointer items-center px-3 text-foreground',
               index === etat.active ? 'bg-muted' : 'hover:bg-muted',
