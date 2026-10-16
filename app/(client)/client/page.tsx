@@ -22,9 +22,12 @@ export default async function EspaceClient() {
           Bonjour, {session.user.name}
         </h1>
       </header>
-      <p className="text-secondary">
-        La réservation et le suivi de vos courses arrivent ici très bientôt.
-      </p>
+      <Link
+        href="/client/reserver"
+        className="inline-flex min-h-cible items-center justify-center self-start rounded-md bg-accent px-4 font-semibold text-on-primary transition-colors duration-200 hover:bg-accent-survol"
+      >
+        Réserver une course
+      </Link>
       <Link href="/compte" className="self-start font-semibold text-accent underline">
         Mon compte
       </Link>
