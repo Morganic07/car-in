@@ -45,6 +45,11 @@ export const REGLES = {
   /// annoncé selon les sources à 2 000 ou 2 500 par jour. Atteint, chacun voit
   /// « prix confirmé par la compagnie » (S11) plutôt qu'une panne.
   estimationGlobale: { maximum: 1500, fenetreMs: 24 * 60 * 60_000 },
+  /// Courses créées par client (story 3.3). Chaque course apparaît aux trois
+  /// chauffeurs et coûte un recalcul d'itinéraire : sans plafond, un seul compte
+  /// remplirait leur liste et viderait le quota commun. Dix par heure dépasse tout
+  /// usage réel d'un client, qui réserve quelques courses par semaine.
+  reservationParClient: { maximum: 10, fenetreMs: 60 * 60_000 },
 } as const satisfies Record<string, Regle>
 
 /// Clé du plafond commun d'estimations : une par jour UTC, le jour sur lequel le
