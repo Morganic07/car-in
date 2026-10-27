@@ -2,7 +2,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 import { exigerEspace } from '../../../../lib/garde.ts'
-import { FormulaireTrajet } from './FormulaireTrajet.tsx'
+import { premierDepartEnSaisie } from '../../../../lib/reservation.ts'
+import { FormulaireReservation } from './FormulaireReservation.tsx'
 
 export const metadata: Metadata = {
   title: "Réserver une course — Car'in",
@@ -10,6 +11,10 @@ export const metadata: Metadata = {
 
 export default async function PageReserver() {
   await exigerEspace('CLIENT')
+
+  // Calculée ici, à chaque requête : la page dépend de la session, elle n'est jamais
+  // servie depuis un cache.
+  const minimum = premierDepartEnSaisie()
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-12">
@@ -21,7 +26,7 @@ export default async function PageReserver() {
           Réserver une course
         </h1>
       </header>
-      <FormulaireTrajet />
+      <FormulaireReservation minimum={minimum} />
       <Link href="/client" className="self-start font-semibold text-accent underline">
         Retour à mon espace
       </Link>

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import {
   ADRESSE_MANQUANTE,
@@ -298,56 +298,5 @@ describe('lecture côté serveur (S10)', () => {
   })
 })
 
-// L'action, avec une garde simulée : la garde elle-même est éprouvée sur de vraies
-// sessions dans tests/acces.test.ts, et sa présence par le test de structure.
-const garde = vi.hoisted(() => ({ permis: true }))
-vi.mock('../lib/garde.ts', () => ({
-  autoriser: async () =>
-    garde.permis
-      ? { permis: true, session: {} }
-      : { permis: false, motif: 'Cette action est réservée aux clients.' },
-}))
-
-describe('action verifierTrajet', () => {
-  beforeEach(() => {
-    garde.permis = true
-  })
-
-  async function verifier(valeurs: Record<string, string>) {
-    const { verifierTrajet } = await import('../app/(client)/client/reserver/actions.ts')
-    const donnees = new FormData()
-    for (const [cle, valeur] of Object.entries(valeurs)) donnees.append(cle, valeur)
-    return verifierTrajet({ erreurs: {} }, donnees)
-  }
-
-  const trajet = {
-    depart: CERGY.label,
-    departLabel: CERGY.label,
-    departLat: String(CERGY.lat),
-    departLon: String(CERGY.lon),
-    arrivee: AMIENS.label,
-    arriveeLabel: AMIENS.label,
-    arriveeLat: String(AMIENS.lat),
-    arriveeLon: String(AMIENS.lon),
-  }
-
-  it('retient deux adresses localisées', async () => {
-    expect(await verifier(trajet)).toEqual({
-      erreurs: {},
-      trajet: { depart: CERGY, arrivee: AMIENS },
-    })
-  })
-
-  it('refuse, champ par champ, une adresse tapée sans choix', async () => {
-    const etat = await verifier({ ...trajet, arriveeLabel: '', arriveeLat: '', arriveeLon: '' })
-    expect(etat).toEqual({ erreurs: { arrivee: MESSAGE_NON_CHOISIE } })
-  })
-
-  it('refuse un visiteur qui n’est pas client, sans rien lire', async () => {
-    garde.permis = false
-    expect(await verifier(trajet)).toEqual({
-      erreurs: {},
-      erreurGenerale: 'Cette action est réservée aux clients.',
-    })
-  })
-})
+// L'action qui applique cette lecture, `reserverCourse`, est éprouvée dans
+// tests/reservation.test.ts, sur une vraie base.

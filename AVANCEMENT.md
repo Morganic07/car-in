@@ -273,7 +273,7 @@ objection de relecture restée sans réponse.
   possible, et **aucune distance de repli n'est calculée** (S11) — un test simule la panne
   et vérifie qu'aucun prix n'est inventé.
 
-- [ ] **3.3 — Formulaire de réservation et création de la course**
+- [x] **3.3 — Formulaire de réservation et création de la course**
   *Critère* : départ, arrivée, date et heure, passagers de 1 à 6, bagages, siège enfant,
   commentaire. Une date passée ou à moins d'une heure est refusée avec un message. La
   validation crée une course `DEMANDEE` et mène à une page de confirmation qui récapitule
