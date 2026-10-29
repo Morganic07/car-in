@@ -1,0 +1,21 @@
+/* Ce que la feuille de Leaflet impose et que le design system refuse.
+
+   leaflet.css n'est dans aucune couche : ses règles l'emportent donc sur toute
+   utilitaire de Tailwind, quelle que soit leur spécificité. D'où une feuille ordinaire,
+   préfixée par `.carte-trajet` pour l'emporter sans dépendre de l'ordre dans lequel
+   le navigateur reçoit les deux feuilles. */
+
+.carte-trajet .leaflet-container {
+  /* Leaflet pose Helvetica sur toute la carte, étiquettes comprises. */
+  font-family: var(--font-sans);
+}
+
+.carte-trajet .leaflet-container .leaflet-control-attribution {
+  /* 12 px chez Leaflet : jamais de texte informatif sous 14 px. */
+  font-size: 0.875rem;
+}
+
+.carte-trajet .leaflet-container a {
+  /* Leaflet impose sa propre couleur de lien, hors jetons. */
+  color: var(--color-accent);
+}

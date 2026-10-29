@@ -5,15 +5,10 @@ import { notFound } from 'next/navigation'
 import { BadgeEtat } from '../../../../../../components/ui/BadgeEtat.tsx'
 import { exigerEspace } from '../../../../../../lib/garde.ts'
 import { prisma } from '../../../../../../lib/prisma.ts'
-import { formaterDepart } from '../../../../../../lib/reservation.ts'
-import { formaterDistance, formaterDuree, formaterPrix } from '../../../../../../lib/tarif.ts'
+import { RecapitulatifCourse } from '../../../RecapitulatifCourse.tsx'
 
 export const metadata: Metadata = {
   title: "Course réservée — Car'in",
-}
-
-function pluriel(nombre: number, singulier: string, pluriel_: string): string {
-  return `${nombre} ${nombre > 1 ? pluriel_ : singulier}`
 }
 
 /// Récapitulatif d'une réservation qui vient d'aboutir (story 3.3, scénario S1).
@@ -33,15 +28,6 @@ export default async function PageCourseReservee({
     where: { id, clientId: session.user.id },
   })
   if (course === null) notFound()
-
-  const ligne = (terme: string, valeur: string) => (
-    <div className="flex flex-col gap-0.5 sm:flex-row sm:gap-3">
-      <dt className="shrink-0 font-semibold text-secondary sm:w-40">{terme}</dt>
-      {/* Retours à la ligne du commentaire conservés, et un mot sans espace coupé
-          plutôt que de faire défiler l'écran à 375 px. */}
-      <dd className="whitespace-pre-line wrap-anywhere text-foreground">{valeur}</dd>
-    </div>
-  )
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-12">
@@ -68,39 +54,20 @@ export default async function PageCourseReservee({
         </p>
       </section>
 
-      <dl className="flex flex-col gap-3">
-        {ligne('Départ', course.departLabel)}
-        {ligne('Arrivée', course.arriveeLabel)}
-        {ligne('Date et heure', formaterDepart(course.departAt))}
-        {ligne('Passagers', pluriel(course.passagers, 'passager', 'passagers'))}
-        {ligne(
-          'Bagages',
-          course.bagages === 0 ? 'Aucun' : pluriel(course.bagages, 'bagage', 'bagages'),
-        )}
-        {ligne('Siège enfant', course.siegeEnfant ? 'Oui' : 'Non')}
-        {ligne('Commentaire', course.commentaire ?? 'Aucun')}
-        {course.distanceM === null || course.dureeS === null
-          ? null
-          : ligne(
-              'Trajet estimé',
-              `${formaterDistance(course.distanceM)} · ${formaterDuree(course.dureeS)}`,
-            )}
-        {/* Prix absent : l'estimation a échoué. On l'écrit, on ne le remplace pas par
-            un calcul approché — scénario S11. */}
-        {ligne(
-          'Prix',
-          course.prixEstimeCents === null
-            ? 'Prix confirmé par la compagnie'
-            : `${formaterPrix(course.prixEstimeCents)} estimés, le compteur fait foi`,
-        )}
-      </dl>
+      <RecapitulatifCourse course={course} />
 
       <div className="flex flex-wrap gap-4">
         <Link
-          href="/client"
+          href={`/client/courses/${course.id}`}
           className="inline-flex min-h-cible items-center justify-center rounded-md bg-accent px-4 font-semibold text-on-primary transition-colors duration-200 hover:bg-accent-survol"
         >
-          Retour à mon espace
+          Suivre ma course
+        </Link>
+        <Link
+          href="/client"
+          className="inline-flex min-h-cible items-center font-semibold text-accent underline"
+        >
+          Mes courses
         </Link>
         <Link
           href="/client/reserver"
