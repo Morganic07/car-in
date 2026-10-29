@@ -279,7 +279,7 @@ objection de relecture restée sans réponse.
   validation crée une course `DEMANDEE` et mène à une page de confirmation qui récapitule
   tout, prix compris (S1).
 
-- [ ] **3.4 — Mes courses : à venir, historique, détail**
+- [x] **3.4 — Mes courses : à venir, historique, détail**
   *Critère* : deux listes séparées **par état**, jamais par date — « à venir » contient
   `DEMANDEE`, `ACCEPTEE` et `EN_COURSE`, « passées » contient `TERMINEE` et `ANNULEE` ;
   l'état est visible sur chaque ligne. Le jeu de démonstration de 1.2 comporte une course
