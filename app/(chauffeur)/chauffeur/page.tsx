@@ -5,6 +5,7 @@ import { CarteCourse } from '../../../components/ui/CarteCourse.tsx'
 import { exigerEspace } from '../../../lib/garde.ts'
 import { enAttenteEnRetard } from '../../../lib/mes-courses.ts'
 import { prisma } from '../../../lib/prisma.ts'
+import { BoutonAccepter, ZoneAcceptation } from './ZoneAcceptation.tsx'
 
 export const metadata: Metadata = {
   title: "Courses disponibles — Car'in",
@@ -50,20 +51,27 @@ export default async function EspaceChauffeur() {
         <h2 id="disponibles" className="text-xl font-semibold text-foreground">
           Courses disponibles
         </h2>
-        {courses.length === 0 ? (
-          <p className="rounded-lg bg-muted p-4 text-foreground">
-            Aucune course n’attend de chauffeur pour le moment. Revenez consulter cette page un
-            peu plus tard.
-          </p>
-        ) : (
-          <ul className="flex flex-col gap-3">
-            {courses.map((course) => (
-              <li key={course.id}>
-                <CarteCourse course={course} enRetard={enAttenteEnRetard(course, maintenant)} />
-              </li>
-            ))}
-          </ul>
-        )}
+        {/* Autour de l'état vide aussi : accepter la dernière course vide la liste, et le
+            message doit survivre à ce rafraîchissement. */}
+        <ZoneAcceptation>
+          {courses.length === 0 ? (
+            <p className="rounded-lg bg-muted p-4 text-foreground">
+              Aucune course n’attend de chauffeur pour le moment. Revenez consulter cette page
+              un peu plus tard.
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-3">
+              {courses.map((course) => (
+                <li key={course.id}>
+                  <div className="flex flex-col gap-2">
+                    <CarteCourse course={course} enRetard={enAttenteEnRetard(course, maintenant)} />
+                    <BoutonAccepter courseId={course.id} depart={course.departLabel} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </ZoneAcceptation>
       </section>
 
       <Link

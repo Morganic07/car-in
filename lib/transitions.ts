@@ -6,7 +6,13 @@
 /// dans l'action serveur.
 
 import type { PrismaClient } from '../prisma/generated/client/index.js'
-import { TRANSITIONS, appliquerTransition, type Action, type Propriete } from './domaine/course.ts'
+import {
+  TRANSITIONS,
+  appliquerTransition,
+  estTerminal,
+  type Action,
+  type Propriete,
+} from './domaine/course.ts'
 
 /// Même message pour une course d'un autre et pour un identifiant inventé : rien ne dit
 /// à un curieux qu'un identifiant existe.
@@ -37,8 +43,8 @@ function conditionDeLecture(propriete: Propriete, auteurId: string) {
 /// Applique `action` à la course, si elle est encore possible à cet instant. Une panne
 /// de la base remonte telle quelle : à l'action serveur de la dire à l'utilisateur.
 ///
-/// La lecture qui suit un refus ne décide de rien, l'écriture a déjà échoué : elle sert
-/// seulement à dire « déjà terminée » plutôt qu'un message générique.
+/// La lecture qui suit un refus n'écrit rien : elle reconnaît le chauffeur qui réessaie
+/// une course déjà à lui, et sinon dit « déjà terminée » plutôt qu'un message générique.
 export async function executerTransition(
   client: PrismaClient,
   action: Action,
@@ -65,9 +71,23 @@ export async function executerTransition(
 
   const course = await client.course.findFirst({
     where: { id: courseId, ...conditionDeLecture(transition.propriete, auteurId) },
-    select: { etat: true },
+    select: { etat: true, chauffeurId: true },
   })
   if (course === null) return { effectuee: false, motif: COURSE_INTROUVABLE }
+
+  // Une réponse perdue sur le réseau, et le chauffeur réessaie : la course est bien la
+  // sienne, et c'est ce qu'il doit lire. « Prise par un autre » la lui ferait abandonner,
+  // et le client attendrait un chauffeur qui ne viendra pas.
+  if (
+    transition.propriete === 'chauffeurAbsent' &&
+    course.chauffeurId === auteurId &&
+    // Encore dans un état d'origine, elle n'a pas été acceptée : l'écriture vient d'échouer
+    // sur une ligne incohérente, que la base n'interdit pas.
+    !transition.origines.includes(course.etat) &&
+    !estTerminal(course.etat)
+  ) {
+    return { effectuee: true }
+  }
 
   const verdict = appliquerTransition(course.etat, action, transition.role)
   return { effectuee: false, motif: verdict.permis ? transition.refus : verdict.motif }
