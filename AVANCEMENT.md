@@ -288,7 +288,7 @@ objection de relecture restée sans réponse.
   l'acceptation le nom et le téléphone du chauffeur. Une liste vide affiche un message qui
   invite à réserver, pas un écran blanc.
 
-- [ ] **3.5 — Annulation par le client**
+- [x] **3.5 — Annulation par le client**
   *Critère* : le bouton d'annulation est présent sur toute course `DEMANDEE`, `ACCEPTEE` ou
   `EN_COURSE`, et demande confirmation. Une course `TERMINEE` ou `ANNULEE` ne l'affiche pas,
   et l'action serveur refuse la demande même forgée. Après annulation, la course est
