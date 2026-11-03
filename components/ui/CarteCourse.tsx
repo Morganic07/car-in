@@ -41,7 +41,7 @@ function pluriel(nombre: number, singulier: string, pluriel_: string): string {
 function contraintes(course: CourseAffichee): string {
   const morceaux = [
     pluriel(course.passagers, 'passager', 'passagers'),
-    pluriel(course.bagages, 'bagage', 'bagages'),
+    course.bagages === 0 ? 'aucun bagage' : pluriel(course.bagages, 'bagage', 'bagages'),
   ]
   if (course.siegeEnfant) morceaux.push('siège enfant')
   return morceaux.join(' · ')

@@ -259,27 +259,27 @@ objection de relecture restée sans réponse.
 *Branche `epic/reserver`. Fichiers : `app/(client)/`, `lib/adresse.ts`, `lib/tarif.ts`,
 `components/carte/`.*
 
-- [ ] **3.1 — Saisie d'adresse avec autocomplétion**
+- [x] **3.1 — Saisie d'adresse avec autocomplétion**
   *Critère* : à partir de trois caractères et après 300 ms sans frappe, des propositions
   s'affichent, navigables au clavier et sélectionnables à la souris. L'adresse retenue
   porte ses coordonnées. Si l'utilisateur tape sans rien sélectionner, la validation est
   refusée avec un message à côté du champ (S10). Le service indisponible affiche un message
   et ne bloque pas la page.
 
-- [ ] **3.2 — Estimation distance, durée et prix**
+- [x] **3.2 — Estimation distance, durée et prix**
   *Critère* : pour deux adresses géolocalisées, la distance, la durée et le prix calculé
   depuis la grille tarifaire s'affichent avant validation. En cas d'échec du service ou de
   clé absente, l'écran affiche « prix confirmé par la compagnie », la réservation reste
   possible, et **aucune distance de repli n'est calculée** (S11) — un test simule la panne
   et vérifie qu'aucun prix n'est inventé.
 
-- [ ] **3.3 — Formulaire de réservation et création de la course**
+- [x] **3.3 — Formulaire de réservation et création de la course**
   *Critère* : départ, arrivée, date et heure, passagers de 1 à 6, bagages, siège enfant,
   commentaire. Une date passée ou à moins d'une heure est refusée avec un message. La
   validation crée une course `DEMANDEE` et mène à une page de confirmation qui récapitule
   tout, prix compris (S1).
 
-- [ ] **3.4 — Mes courses : à venir, historique, détail**
+- [x] **3.4 — Mes courses : à venir, historique, détail**
   *Critère* : deux listes séparées **par état**, jamais par date — « à venir » contient
   `DEMANDEE`, `ACCEPTEE` et `EN_COURSE`, « passées » contient `TERMINEE` et `ANNULEE` ;
   l'état est visible sur chaque ligne. Le jeu de démonstration de 1.2 comporte une course
@@ -288,7 +288,7 @@ objection de relecture restée sans réponse.
   l'acceptation le nom et le téléphone du chauffeur. Une liste vide affiche un message qui
   invite à réserver, pas un écran blanc.
 
-- [ ] **3.5 — Annulation par le client**
+- [x] **3.5 — Annulation par le client**
   *Critère* : le bouton d'annulation est présent sur toute course `DEMANDEE`, `ACCEPTEE` ou
   `EN_COURSE`, et demande confirmation. Une course `TERMINEE` ou `ANNULEE` ne l'affiche pas,
   et l'action serveur refuse la demande même forgée. Après annulation, la course est
