@@ -312,7 +312,7 @@ objection de relecture restée sans réponse.
   est dépassée remonte en tête avec un badge « en retard » (S9). Liste vide : message
   explicite.
 
-- [ ] **4.2 — Accepter une course**
+- [x] **4.2 — Accepter une course**
   *Critère* : accepter passe la course en `ACCEPTEE` au nom du chauffeur et la retire des
   disponibles des autres. Un test de concurrence lance deux acceptations simultanées sur la
   même course : une seule réussit, la seconde reçoit « cette course vient d'être prise » et
