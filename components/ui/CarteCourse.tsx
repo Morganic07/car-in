@@ -47,12 +47,26 @@ function contraintes(course: CourseAffichee): string {
   return morceaux.join(' · ')
 }
 
-export function CarteCourse({ course }: { readonly course: CourseAffichee }) {
+export function CarteCourse({
+  course,
+  enRetard = false,
+}: {
+  readonly course: CourseAffichee
+  /// Signal du scénario S9, décidé par l'appelant : la carte ne lit pas l'horloge.
+  readonly enRetard?: boolean
+}) {
   return (
     <article className="flex flex-col gap-3 rounded-lg border border-border bg-background p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <p className="font-semibold text-foreground">{FORMAT_DATE.format(course.departAt)}</p>
-        <BadgeEtat etat={course.etat} />
+        <div className="flex flex-wrap gap-2">
+          {enRetard ? (
+            <span className="inline-flex items-center rounded-full bg-destructive px-3 py-1 text-sm font-semibold text-on-primary">
+              En retard
+            </span>
+          ) : null}
+          <BadgeEtat etat={course.etat} />
+        </div>
       </div>
 
       <dl className="flex flex-col gap-1 text-foreground">
