@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 
 import { BadgeEtat } from '../../../../../../components/ui/BadgeEtat.tsx'
 import { exigerEspace } from '../../../../../../lib/garde.ts'
@@ -28,6 +28,10 @@ export default async function PageCourseReservee({
     where: { id, clientId: session.user.id },
   })
   if (course === null) notFound()
+
+  // Cette page n'est vraie que tant que la course attend un chauffeur. Le retour arrière
+  // y ramène une course déjà prise ou annulée, qu'elle annoncerait encore comme réservée.
+  if (course.etat !== 'DEMANDEE') redirect(`/client/courses/${encodeURIComponent(course.id)}`)
 
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-12">

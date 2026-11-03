@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 
 import { CarteTrajet } from '../../../../../components/carte/CarteTrajet.tsx'
 import { BadgeEtat } from '../../../../../components/ui/BadgeEtat.tsx'
+import { transitionsPossibles } from '../../../../../lib/domaine/course.ts'
 import { exigerEspace } from '../../../../../lib/garde.ts'
 import {
   CHAUFFEUR_INCONNU,
@@ -14,6 +15,7 @@ import {
 import { prisma } from '../../../../../lib/prisma.ts'
 import { formaterDepart } from '../../../../../lib/reservation.ts'
 import { RecapitulatifCourse } from '../../RecapitulatifCourse.tsx'
+import { AnnulationCourse } from './AnnulationCourse.tsx'
 
 export const metadata: Metadata = {
   title: "Ma course — Car'in",
@@ -108,6 +110,11 @@ export default async function PageCourse({ params }: { params: Promise<{ id: str
       />
 
       <RecapitulatifCourse course={course} />
+
+      <AnnulationCourse
+        courseId={course.id}
+        annulable={transitionsPossibles(course.etat, 'CLIENT').includes('annuler')}
+      />
 
       <Link
         href="/client"
