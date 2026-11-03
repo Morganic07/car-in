@@ -297,11 +297,16 @@ objection de relecture restée sans réponse.
   temps : une seule des deux transitions aboutit, l'autre est refusée avec un message, et
   une course `TERMINEE` n'est jamais réécrite en `ANNULEE`.
 
+> **Revue de fin d'epic non faite, par décision (2026-11-03), pour aller vite.** Ni la revue
+> de qualité (E1), ni la passe d'interface, ni l'audit de sécurité (E2) n'ont été menés sur
+> cet epic : son code n'a eu que les vérifications story par story. `epic/reserver` est
+> fusionné dans `main` sans ces revues : elles restent à rattraper.
+
 ### Epic 4 — Conduire, côté chauffeur
 
 *Branche `epic/conduire`. Fichiers : `app/(chauffeur)/`.*
 
-- [ ] **4.1 — Courses disponibles**
+- [x] **4.1 — Courses disponibles**
   *Critère* : la liste des courses `DEMANDEE`, triée par heure de départ, affiche adresses,
   heure, passagers et bagages sans qu'il faille ouvrir le détail. Une course dont l'heure
   est dépassée remonte en tête avec un badge « en retard » (S9). Liste vide : message
