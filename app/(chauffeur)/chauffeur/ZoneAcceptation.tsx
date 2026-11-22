@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useActionState, type ReactNode } from 'react'
 import { useFormStatus } from 'react-dom'
 
@@ -21,12 +22,15 @@ export function ZoneAcceptation({ children }: { readonly children: ReactNode }) 
       {/* Masqué pendant l'envoi : « Course acceptée » parlerait de la précédente, alors
           qu'une autre est en train de partir. */}
       {!enCours && etat.acceptee === true ? (
-        <p
+        <div
           role="status"
-          className="sticky top-2 z-10 rounded-lg bg-etat-terminee p-4 font-semibold text-etat-terminee-texte"
+          className="sticky top-2 z-10 flex flex-col gap-1 rounded-lg bg-etat-terminee p-4 font-semibold text-etat-terminee-texte"
         >
-          Course acceptée : elle vous est attribuée.
-        </p>
+          <p>Course acceptée : elle vous est attribuée.</p>
+          <Link href="/chauffeur/courses" className="inline-flex min-h-cible items-center self-start underline">
+            Voir mes courses
+          </Link>
+        </div>
       ) : null}
       {enCours || etat.erreur === undefined ? null : (
         <p

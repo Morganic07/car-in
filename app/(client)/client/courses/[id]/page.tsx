@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 
 import { CarteTrajet } from '../../../../../components/carte/CarteTrajet.tsx'
 import { BadgeEtat } from '../../../../../components/ui/BadgeEtat.tsx'
+import { RecapitulatifCourse } from '../../../../../components/ui/RecapitulatifCourse.tsx'
 import { transitionsPossibles } from '../../../../../lib/domaine/course.ts'
 import { exigerEspace } from '../../../../../lib/garde.ts'
 import {
@@ -14,16 +15,11 @@ import {
 } from '../../../../../lib/mes-courses.ts'
 import { prisma } from '../../../../../lib/prisma.ts'
 import { formaterDepart } from '../../../../../lib/reservation.ts'
-import { RecapitulatifCourse } from '../../RecapitulatifCourse.tsx'
+import { lienTelephone } from '../../../../../lib/telephone.ts'
 import { AnnulationCourse } from './AnnulationCourse.tsx'
 
 export const metadata: Metadata = {
   title: "Ma course — Car'in",
-}
-
-/// `tel:` sans espaces ni points : certains téléphones refusent de composer sinon.
-function lienTelephone(telephone: string): string {
-  return `tel:${telephone.replace(/[\s.-]/g, '')}`
 }
 
 /// Détail d'une course du client (story 3.4) : état, chauffeur dès l'acceptation,

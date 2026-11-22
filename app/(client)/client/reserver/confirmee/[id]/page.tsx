@@ -3,9 +3,9 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 
 import { BadgeEtat } from '../../../../../../components/ui/BadgeEtat.tsx'
+import { RecapitulatifCourse } from '../../../../../../components/ui/RecapitulatifCourse.tsx'
 import { exigerEspace } from '../../../../../../lib/garde.ts'
 import { prisma } from '../../../../../../lib/prisma.ts'
-import { RecapitulatifCourse } from '../../../RecapitulatifCourse.tsx'
 
 export const metadata: Metadata = {
   title: "Course réservée — Car'in",

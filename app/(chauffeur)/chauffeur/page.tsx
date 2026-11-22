@@ -74,12 +74,20 @@ export default async function EspaceChauffeur() {
         </ZoneAcceptation>
       </section>
 
-      <Link
-        href="/compte"
-        className="inline-flex min-h-cible items-center self-start font-semibold text-accent underline"
-      >
-        Mon compte
-      </Link>
+      <div className="flex flex-wrap gap-4">
+        <Link
+          href="/chauffeur/courses"
+          className="inline-flex min-h-cible items-center font-semibold text-accent underline"
+        >
+          Mes courses
+        </Link>
+        <Link
+          href="/compte"
+          className="inline-flex min-h-cible items-center font-semibold text-accent underline"
+        >
+          Mon compte
+        </Link>
+      </div>
     </main>
   )
 }

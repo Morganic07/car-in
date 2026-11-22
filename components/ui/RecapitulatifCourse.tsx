@@ -1,8 +1,8 @@
-import { formaterDepart } from '../../../lib/reservation.ts'
-import { formaterDistance, formaterDuree, formaterPrix } from '../../../lib/tarif.ts'
+import { formaterDepart } from '../../lib/reservation.ts'
+import { formaterDistance, formaterDuree, formaterPrix } from '../../lib/tarif.ts'
 
-/// Ce que le récapitulatif lit d'une course : la confirmation de réservation et le
-/// détail le partagent, pour qu'un client ne lise jamais deux versions de la même.
+/// Ce que le récapitulatif lit d'une course : le client et le chauffeur le partagent, pour
+/// ne jamais lire deux versions de la même.
 export type CourseRecapitulee = {
   readonly departLabel: string
   readonly arriveeLabel: string
